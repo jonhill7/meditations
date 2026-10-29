@@ -1,6 +1,6 @@
 // Offline support. Bump VERSION whenever app files change so phones pick up
 // the new version.
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data-v1';
 
