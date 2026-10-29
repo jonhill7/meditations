@@ -3,7 +3,7 @@
   "name": "Meditations",
   "short_name": "Meditations",
   "description": "Morning scripture, reading plan, study, prayer and reflection. Everything personal stays on this phone.",
-  "start_url": "/meditations/#/today",
+  "start_url": "/meditations/",
   "scope": "/meditations/",
   "display": "standalone",
   "orientation": "portrait",
