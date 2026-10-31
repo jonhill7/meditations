@@ -5,6 +5,7 @@ import { getPassage } from '../bible.js';
 import { verseForDate } from '../votd.js';
 import { esc, longDate, daysBetween, toast } from '../ui.js';
 import { prayedToday, prayersDue } from './prayers.js';
+import { todaysReflections, toggleReflection, reflectionListHtml } from './reflect.js';
 
 export function planDayHtml(idx) {
   const plan = buildPlan();
@@ -22,7 +23,7 @@ export async function render(main) {
   const doneToday = d.plan.length > 0;
   const finished = nextDay >= plan.length;
   const status = dayStatus(date);
-  const reminders = state.reminders.filter(r => !r.archived);
+  const reflections = todaysReflections();
   const due = prayersDue(3);
   const verseRef = verseForDate(date);
 
@@ -73,10 +74,10 @@ export async function render(main) {
         <h2>Reflect</h2>
         <a class="small" href="#/reflect">Edit reminders</a>
       </div>
-      ${reminders.length
-        ? `<ul class="reminders">${reminders.map(r => `<li>${esc(r.text)}</li>`).join('')}</ul>`
-        : `<p class="muted">Add a few short reminders, like "Stay calm," to read over each morning.</p>`}
-      <label class="check big"><input type="checkbox" data-act="reflected" ${d.reflected ? 'checked' : ''}> I've reflected on these today</label>
+      ${reflections.length
+        ? reflectionListHtml()
+        : `<p class="muted">Add a few short reminders, like "Stay calm," to read over each morning.</p>
+           <label class="check big"><input type="checkbox" data-act="reflected" ${d.reflected ? 'checked' : ''}> I've reflected today</label>`}
     </section>
 
     <section class="card">
@@ -105,6 +106,11 @@ export async function render(main) {
   });
 
   main.onclick = e => {
+    const tap = e.target.closest('[data-reflection]');
+    if (tap) {
+      toggleReflection(tap.dataset.reflection);
+      return render(main);
+    }
     const btn = e.target.closest('[data-act]');
     if (!btn || btn.tagName === 'INPUT') return;
     const act = btn.dataset.act;
