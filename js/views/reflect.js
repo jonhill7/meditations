@@ -20,7 +20,7 @@ export function todaysReflections() {
 
 function syncReflected(d) {
   const list = todaysReflections();
-  if (list.length) d.reflected = list.every(r => r.id in (d.doneReflections ?? {}));
+  if (list.length) d.reflected = list.some(r => r.id in (d.doneReflections ?? {}));
 }
 
 export function toggleReflection(id) {
@@ -49,10 +49,10 @@ export function reflectionListHtml() {
     <ul class="reflections">${list.map(r => `
       <li><button class="reflection ${r.id in done ? 'done' : ''}" data-reflection="${r.id}" aria-pressed="${r.id in done}">
         <span class="reflection-text">${esc(r.text)}</span>
-        <span class="reflection-mark" aria-hidden="true">${r.id in done ? '✓' : ''}</span>
+        <span class="reflection-mark" aria-hidden="true">${r.id in done ? '★' : ''}</span>
       </button></li>`).join('')}
     </ul>
-    <p class="small muted">${count === list.length ? '✓ All reflected on today' : `Tap each one after you've reflected on it · ${count} of ${list.length}`}</p>`;
+    <p class="small muted">${count ? `${count} selected for today · tap again to unselect` : 'Tap the ones you want to carry into today'}</p>`;
 }
 
 export async function render(main) {
@@ -73,7 +73,7 @@ export async function render(main) {
       <textarea name="text" rows="2" placeholder="e.g. Stay calm. Listen before answering." required></textarea>
       <button class="btn primary" type="submit">Add reminder</button>
     </form>
-    <p class="small muted">A new reminder shows every day for ${INTRO_DAYS} days. After that, each one you reflect on comes back at random in 3 to 7 days. You'll see at least 3 a day. Pin a reminder to see it every day.</p>
+    <p class="small muted">A new reminder shows every day for ${INTRO_DAYS} days. After that, each one you select comes back at random in 3 to 7 days; ones you don't select come back tomorrow. You'll see at least 3 a day. Pin a reminder to see it every day.</p>
 
     ${active.length ? `<h2 class="section">All reminders</h2><ul class="list reminders-edit">${active.map((r, i) => `
       <li class="card reminder">

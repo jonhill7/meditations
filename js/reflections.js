@@ -3,7 +3,7 @@
 // Reminders go stale when you see the same list every morning, so they
 // rotate, loosely following spaced repetition:
 // - A new reminder shows every day for its first 3 days, to settle it in.
-// - After that, each time you tap it as reflected it goes away for a random
+// - After that, each time you select it for the day it goes away for a random
 //   3 to 7 days. The randomness keeps the mix of reminders changing.
 // - One you don't get to stays due and comes back the next day.
 // - Pinned reminders show every day.
