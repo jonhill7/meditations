@@ -71,17 +71,6 @@ export async function render(main) {
 
     <section class="card">
       <div class="card-head">
-        <h2>Reflect</h2>
-        <a class="small" href="#/reflect">Edit reminders</a>
-      </div>
-      ${reflections.length
-        ? reflectionListHtml()
-        : `<p class="muted">Add a few short reminders, like "Stay calm," to read over each morning.</p>
-           <label class="check big"><input type="checkbox" data-act="reflected" ${d.reflected ? 'checked' : ''}> I've reflected today</label>`}
-    </section>
-
-    <section class="card">
-      <div class="card-head">
         <h2>Pray</h2>
         <a class="small" href="#/prayers">All prayers</a>
       </div>
@@ -94,6 +83,17 @@ export async function render(main) {
                 : `<button class="btn small" data-act="prayed" data-id="${p.id}">Prayed</button>`}
             </li>`).join('')}</ul>`
         : `<p class="muted">No active prayers yet. <a href="#/prayers">Add one.</a></p>`}
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Reflect</h2>
+        <a class="small" href="#/reflect">Edit reminders</a>
+      </div>
+      ${reflections.length
+        ? reflectionListHtml()
+        : `<p class="muted">Add a few short reminders, like "Stay calm," to read over each morning.</p>
+           <label class="check big"><input type="checkbox" data-act="reflected" ${d.reflected ? 'checked' : ''}> I've reflected today</label>`}
     </section>
   `;
 
