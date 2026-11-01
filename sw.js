@@ -1,5 +1,7 @@
-// Offline support. Bump VERSION whenever app files change so phones pick up
-// the new version.
+// Offline support. The deploy workflow appends the commit to VERSION
+// ('v10+abc1234'), so every deploy gets a fresh shell cache and phones pick up
+// the new version. A new file under js/, css/ or icons/ must be added to
+// SHELL_FILES (tests/precache.test.mjs checks).
 const VERSION = 'v10';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data-v1';

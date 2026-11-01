@@ -66,19 +66,18 @@ save the next 14 days of your plan for offline use.
 ## Putting it on your Android phone
 
 It's a static site. It has to be served over HTTPS so it can install and work
-offline. Pick one:
-
-1. **GitHub Pages**: repo Settings → Pages → Deploy from a branch → `main`,
-   `/ (root)`. On a free GitHub account Pages needs the repo to be public. The
-   code contains nothing personal, since your data never leaves the phone.
-2. **Cloudflare Pages or Netlify** (free, works with a private repo): connect
-   the repo, no build command, output directory `/`.
+offline. It's deployed with **GitHub Pages** by `.github/workflows/deploy.yml`:
+repo Settings → Pages → Build and deployment → Source: **GitHub Actions**. Every
+push runs the tests; pushes to `main` that pass are deployed. (On a free GitHub
+account Pages needs the repo to be public. The code contains nothing personal,
+since your data never leaves the phone.)
 
 Then open the site in Chrome on your phone, tap ⋮ → **Add to Home screen**
 (or **Install app**). After the first load it works offline.
 
-When you change app files, bump `VERSION` in `sw.js` so phones pick up the
-new version.
+The deploy stamps the commit onto `VERSION` in `sw.js`, so phones pick up each
+new version without a manual bump. A new file under `js/`, `css/` or `icons/`
+still needs adding to `SHELL_FILES` in `sw.js`; `npm test` fails until it is.
 
 ## Developing
 
@@ -86,7 +85,7 @@ No build step. Serve the folder and open it:
 
 ```sh
 python3 -m http.server 8000
-npm test          # reading plan checks (Node 18+)
+npm test          # plan, books, memory, reflections and precache checks (Node 18+)
 ```
 
 `tools/build_data.py` regenerates `data/` from
