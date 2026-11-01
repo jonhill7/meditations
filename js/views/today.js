@@ -4,7 +4,7 @@ import { bookName, formatRef } from '../books.js';
 import { getPassage } from '../bible.js';
 import { verseForDate } from '../votd.js';
 import { esc, longDate, daysBetween, toast } from '../ui.js';
-import { prayedToday, prayersDue } from './prayers.js';
+import { prayedToday, prayersDue, versesHtml, toggleVerse } from './prayers.js';
 import { todaysReflections, toggleReflection, reflectionListHtml } from './reflect.js';
 
 export function planDayHtml(idx) {
@@ -77,7 +77,7 @@ export async function render(main) {
       ${due.length
         ? `<ul class="prayer-mini">${due.map(p => `
             <li>
-              <div><strong>${esc(p.title)}</strong>${p.category ? ` <span class="tag">${esc(p.category)}</span>` : ''}</div>
+              <div class="grow"><strong>${esc(p.title)}</strong>${p.category ? ` <span class="tag">${esc(p.category)}</span>` : ''}${versesHtml(p)}</div>
               ${prayedToday(p)
                 ? '<span class="done-line">✓ Prayed</span>'
                 : `<button class="btn small" data-act="prayed" data-id="${p.id}">Prayed</button>`}
@@ -106,6 +106,7 @@ export async function render(main) {
   });
 
   main.onclick = e => {
+    if (toggleVerse(e)) return;
     const tap = e.target.closest('[data-reflection]');
     if (tap) {
       toggleReflection(tap.dataset.reflection);

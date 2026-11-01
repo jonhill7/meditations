@@ -1,7 +1,8 @@
-import { state, save } from '../store.js';
+import { state, save, uid, today } from '../store.js';
 import { BOOKS, BOOK, bookName, formatRef, parseRef } from '../books.js';
 import { getChapter, getPassage, crossRefs, getCommentary, COMMENTARIES } from '../bible.js';
 import { esc, sheet, toast } from '../ui.js';
+import { addVerseToPrayer } from './prayers.js';
 
 export const tab = 'read';
 
@@ -134,6 +135,16 @@ function study(book, chapter, verse, text, translation, verseEl) {
       <p class="small muted saved-line">${note ? `Saved ${esc(new Date(note.updated).toLocaleDateString())}` : 'Saves as you type, on this phone only.'}</p>
     </section>
     <section>
+      <h3>Pray with this verse</h3>
+      <div class="row">
+        <select class="grow pray-select" aria-label="Prayer">
+          ${state.prayers.filter(p => p.status === 'active').map(p => `<option value="${p.id}">${esc(p.title)}</option>`).join('')}
+          <option value="__new">New prayer…</option>
+        </select>
+        <button class="btn ghost small" data-act="add-to-prayer">Add</button>
+      </div>
+    </section>
+    <section>
       <h3>Cross references</h3>
       <div class="xrefs"><p class="muted">Loading…</p></div>
     </section>
@@ -166,6 +177,20 @@ function study(book, chapter, verse, text, translation, verseEl) {
       commit();
     }
   });
+
+  d.querySelector('[data-act="add-to-prayer"]').onclick = () => {
+    const sel = d.querySelector('.pray-select');
+    let p;
+    if (sel.value === '__new') {
+      const title = prompt('What are you praying for?')?.trim();
+      if (!title) return;
+      p = { id: uid(), title, details: '', category: '', created: today(), status: 'active', prayed: [], verses: [] };
+      state.prayers.push(p);
+    } else {
+      p = state.prayers.find(x => x.id === sel.value);
+    }
+    toast(addVerseToPrayer(p, ref) ? `Added to "${p.title}"` : `Already on "${p.title}"`);
+  };
 
   crossRefs(book, chapter, verse).then(list => {
     const box = d.querySelector('.xrefs');

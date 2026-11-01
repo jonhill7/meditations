@@ -21,6 +21,7 @@ export function applyLook() {
 
 let current = '';
 async function route() {
+  document.querySelector('dialog.sheet')?.close();
   const [name = 'today', ...params] = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
   const view = ROUTES[name] ?? today;
   const key = location.hash;

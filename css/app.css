@@ -163,8 +163,8 @@ label.check.card { margin-top: 4px; }
 }
 
 .prayer-mini { list-style: none; margin: 0; padding: 0; }
-.prayer-mini li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
-.prayer-mini li:first-child { border-top: 0; }
+.prayer-mini > li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+.prayer-mini > li:first-child { border-top: 0; }
 .tag { display: inline-block; font-size: .72em; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-family: var(--sans); font-weight: 500; }
 .answered { color: var(--good); font-weight: 600; margin-bottom: 4px; }
 
@@ -206,6 +206,16 @@ textarea { resize: vertical; line-height: 1.45; }
 .reflection.done { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border-color: var(--accent); border-left-color: var(--accent); }
 .reflection.done .reflection-text { font-weight: 600; }
 .reflection.done .reflection-mark { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+
+.prayer-verses { list-style: none; margin: 6px 0 4px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.verse-chip {
+  border: 0; background: none; padding: 4px 0; color: var(--accent); font: inherit; font-weight: 600; font-size: .9em; cursor: pointer;
+}
+.verse-text { font-family: var(--serif); line-height: 1.6; padding: 2px 0 8px; }
+.verse-text sup { font-family: var(--sans); font-size: .65em; color: var(--muted); margin-right: 2px; }
+.verse-edit { list-style: none; margin: 6px 0; padding: 0; }
+.verse-edit li { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-left: 2px; font-weight: 400; }
+.prayer-mini .grow { flex: 1; min-width: 0; }
 
 /* Bible */
 .section { margin-top: 18px; }

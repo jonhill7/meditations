@@ -64,3 +64,31 @@ export function refKey(ref) {
   if (!r) return 0;
   return BOOK[r.book].index * 1e6 + r.chapter * 1e3 + (r.verse ?? 0);
 }
+
+// Common abbreviations that a prefix match alone gets wrong or can't decide.
+const ALIASES = {
+  gn: 'GEN', ex: 'EXO', lv: 'LEV', nm: 'NUM', dt: 'DEU', jdg: 'JDG', judg: 'JDG', jg: 'JDG',
+  ps: 'PSA', psa: 'PSA', psalm: 'PSA', pss: 'PSA', prv: 'PRO', song: 'SNG', sos: 'SNG', songofsolomon: 'SNG',
+  canticles: 'SNG', eze: 'EZK', ezk: 'EZK', jl: 'JOL', jon: 'JON', mt: 'MAT', mk: 'MRK', mrk: 'MRK',
+  lk: 'LUK', jn: 'JHN', jhn: 'JHN', phil: 'PHP', php: 'PHP', phm: 'PHM', philem: 'PHM',
+  jas: 'JAS', jude: 'JUD', jd: 'JUD', rv: 'REV', revelations: 'REV',
+};
+
+// Parses what people type: 'John 3:16', 'phil 4:6-7', '1 Cor 13', 'Ps 23:1–3'.
+// Returns a ref string like 'PHP 4:6-7', or null.
+export function parseTypedRef(input) {
+  const m = /^\s*([1-3]?\s*[a-z][a-z .]*?)\.?\s*(\d+)(?:\s*:\s*(\d+)(?:\s*[-–—]\s*(\d+))?)?\s*$/i.exec(input);
+  if (!m) return null;
+  const key = m[1].toLowerCase().replace(/^(i{1,3})\s+/, (_, r) => String(r.length)).replace(/[\s.]/g, '');
+  let code = ALIASES[key] ?? (BOOK[key.toUpperCase()] ? key.toUpperCase() : null);
+  if (!code) {
+    const hits = BOOKS.filter(b => b.name.toLowerCase().replace(/\s/g, '').startsWith(key));
+    if (hits.length !== 1) return null;
+    code = hits[0].code;
+  }
+  const chapter = +m[2];
+  if (chapter < 1 || chapter > BOOK[code].chapters) return null;
+  if (!m[3]) return `${code} ${chapter}`;
+  if (m[4] && +m[4] > +m[3]) return `${code} ${chapter}:${m[3]}-${m[4]}`;
+  return `${code} ${chapter}:${m[3]}`;
+}

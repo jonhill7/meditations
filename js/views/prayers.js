@@ -1,5 +1,7 @@
 import { state, save, today, uid } from '../store.js';
 import { esc, sheet, shortDate, daysBetween, toast } from '../ui.js';
+import { formatRef, parseRef, parseTypedRef } from '../books.js';
+import { getPassage } from '../bible.js';
 
 export const tab = 'prayers';
 const DEFAULT_CATEGORIES = ['Family', 'Friends', 'Health', 'Work', 'Church', 'World', 'Personal', 'Thanksgiving'];
@@ -25,6 +27,43 @@ export function prayersDue(n) {
 
 function categories() {
   return [...new Set([...DEFAULT_CATEGORIES, ...state.prayers.map(p => p.category).filter(Boolean)])];
+}
+
+// Verses attached to a prayer, each tappable to show its text.
+export function versesHtml(p) {
+  if (!p.verses?.length) return '';
+  return `<ul class="prayer-verses">${p.verses.map(ref => `
+    <li>
+      <button class="verse-chip" data-verse="${esc(ref)}" aria-expanded="false">${esc(formatRef(ref))}</button>
+      <div class="verse-text" hidden></div>
+    </li>`).join('')}</ul>`;
+}
+
+// Handles a tap on a verse chip; returns true when it was one.
+export function toggleVerse(e) {
+  const btn = e.target.closest('.verse-chip');
+  if (!btn) return false;
+  const out = btn.nextElementSibling;
+  const open = btn.getAttribute('aria-expanded') === 'true';
+  btn.setAttribute('aria-expanded', String(!open));
+  out.hidden = open;
+  if (!open && !out.dataset.loaded) {
+    const r = parseRef(btn.dataset.verse);
+    getPassage(r).then(vs => {
+      out.innerHTML = vs.map(v => `<sup>${v.verse}</sup>${esc(v.text)}`).join(' ') +
+        ` <a class="small" href="#/read/${r.book}/${r.chapter}${r.verse ? `/v${r.verse}` : ''}">Open chapter ›</a>`;
+      out.dataset.loaded = '1';
+    }).catch(err => { out.textContent = err.message; });
+  }
+  return true;
+}
+
+export function addVerseToPrayer(p, ref) {
+  p.verses ??= [];
+  if (p.verses.includes(ref)) return false;
+  p.verses.push(ref);
+  save();
+  return true;
 }
 
 let filter = { status: 'active', category: '' };
@@ -58,6 +97,7 @@ export async function render(main) {
   `;
 
   main.onclick = e => {
+    if (toggleVerse(e)) return;
     const t = e.target.closest('button');
     if (!t) return;
     if (t.dataset.status) {
@@ -96,6 +136,7 @@ function item(p) {
         ${p.category ? `<span class="tag">${esc(p.category)}</span>` : ''}
       </div>
       ${p.details ? `<p class="pre">${esc(p.details)}</p>` : ''}
+      ${versesHtml(p)}
       ${p.status === 'answered' ? `
         <p class="answered">Answered ${esc(shortDate(p.answeredOn))}</p>
         ${p.answerNote ? `<p class="pre muted">${esc(p.answerNote)}</p>` : ''}
@@ -119,6 +160,15 @@ function edit(p, main) {
       <label>Details<textarea name="details" rows="4" placeholder="Optional">${esc(p?.details)}</textarea></label>
       <label>Category<input name="category" list="prayer-cats" value="${esc(p?.category)}" placeholder="Optional"></label>
       <datalist id="prayer-cats">${categories().map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+      <div>
+        <label for="verse-input">Verses</label>
+        <ul class="verse-edit"></ul>
+        <div class="row">
+          <input id="verse-input" class="grow" placeholder="e.g. Phil 4:6-7" autocomplete="off" enterkeyhint="done">
+          <button class="btn ghost small" type="button" data-add-verse>Add</button>
+        </div>
+        <p class="small error verse-error" hidden></p>
+      </div>
       ${p?.status === 'answered' ? `
         <label>Answered on<input type="date" name="answeredOn" value="${esc(p.answeredOn)}"></label>
         <label>How it was answered<textarea name="answerNote" rows="3">${esc(p.answerNote)}</textarea></label>` : ''}
@@ -128,11 +178,48 @@ function edit(p, main) {
       </div>
     </form>`);
   const form = d.querySelector('form');
+  const verses = [...(p?.verses ?? [])];
+  const verseList = d.querySelector('.verse-edit');
+  const verseInput = d.querySelector('#verse-input');
+  const verseError = d.querySelector('.verse-error');
+  const drawVerses = () => {
+    verseList.innerHTML = verses.map((ref, i) => `
+      <li><span>${esc(formatRef(ref))}</span><button type="button" class="icon-btn" data-remove-verse="${i}" aria-label="Remove ${esc(formatRef(ref))}">✕</button></li>`).join('');
+  };
+  const addTyped = () => {
+    const text = verseInput.value.trim();
+    if (!text) return true;
+    const ref = parseTypedRef(text);
+    verseError.hidden = !!ref;
+    if (!ref) {
+      verseError.textContent = `Couldn't read "${text}". Try something like John 3:16 or Phil 4:6-7.`;
+      return false;
+    }
+    if (!verses.includes(ref)) verses.push(ref);
+    verseInput.value = '';
+    drawVerses();
+    return true;
+  };
+  drawVerses();
+  d.querySelector('[data-add-verse]').onclick = addTyped;
+  verseInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addTyped();
+    }
+  });
+  verseList.onclick = e => {
+    const b = e.target.closest('[data-remove-verse]');
+    if (!b) return;
+    verses.splice(Number(b.dataset.removeVerse), 1);
+    drawVerses();
+  };
   form.onsubmit = e => {
     e.preventDefault();
+    if (!addTyped()) return;
     const f = Object.fromEntries(new FormData(form));
     const target = p ?? { id: uid(), created: today(), status: 'active', prayed: [] };
-    Object.assign(target, { title: f.title.trim(), details: f.details.trim(), category: f.category.trim() });
+    Object.assign(target, { title: f.title.trim(), details: f.details.trim(), category: f.category.trim(), verses: [...verses] });
     if (p?.status === 'answered') Object.assign(target, { answeredOn: f.answeredOn || today(), answerNote: f.answerNote.trim() });
     if (!p) state.prayers.push(target);
     save();
