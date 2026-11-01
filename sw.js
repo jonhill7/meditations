@@ -1,6 +1,6 @@
 // Offline support. Bump VERSION whenever app files change so phones pick up
 // the new version.
-const VERSION = 'v8';
+const VERSION = 'v9';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data-v1';
 
@@ -18,7 +18,9 @@ const DATA_FILES = BOOKS.flatMap(b => [`data/bsb/${b}.json`, `data/xref/${b}.jso
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
-    await (await caches.open(SHELL)).addAll(SHELL_FILES);
+    // Bypass the browser's HTTP cache, or a new version can be built from
+    // files GitHub Pages served a few minutes earlier.
+    await (await caches.open(SHELL)).addAll(SHELL_FILES.map(f => new Request(f, { cache: 'reload' })));
     // The Bible text and cross references (about 6 MB) are cached once and
     // kept across app updates. A file that fails now is fetched on first use.
     const data = await caches.open(DATA);
