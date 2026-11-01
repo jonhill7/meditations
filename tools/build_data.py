@@ -3,10 +3,11 @@
 
 Inputs (from github.com/scrollmapper/bible_databases, branch 2025):
   formats/json/BSB.json              Berean Standard Bible, CC0
+  formats/json/KJV.json              King James Version, public domain
   sources/extras/cross_references.txt  OpenBible.info cross references, CC-BY
 
-Usage: python3 tools/build_data.py BSB.json cross_references.txt
-Writes data/bsb/<BOOK>.json and data/xref/<BOOK>.json.
+Usage: python3 tools/build_data.py BSB.json KJV.json cross_references.txt
+Writes data/bsb/<BOOK>.json, data/kjv/<BOOK>.json and data/xref/<BOOK>.json.
 """
 import json
 import os
@@ -32,12 +33,13 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data")
 
 
 def clean(text):
-    return re.sub(r"\s+", " ", text).strip()
+    # KJV marks a few supplied words with [brackets].
+    return re.sub(r"\s+", " ", text.replace("[", "").replace("]", "")).strip()
 
 
-def build_bible(path):
+def build_bible(path, name):
     data = json.load(open(path, encoding="utf-8"))
-    out = os.path.join(ROOT, "bsb")
+    out = os.path.join(ROOT, name)
     os.makedirs(out, exist_ok=True)
     assert len(data["books"]) == 66
     for code, book in zip(USFM, data["books"]):
@@ -88,5 +90,6 @@ def build_xref(path):
 
 
 if __name__ == "__main__":
-    build_bible(sys.argv[1])
-    build_xref(sys.argv[2])
+    build_bible(sys.argv[1], "bsb")
+    build_bible(sys.argv[2], "kjv")
+    build_xref(sys.argv[3])

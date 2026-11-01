@@ -27,6 +27,7 @@ export async function render(main) {
     <section class="card">
       <h2>Bible text</h2>
       <label class="check"><input type="radio" name="translation" value="BSB" ${s.translation === 'BSB' ? 'checked' : ''}> Berean Standard Bible (on the phone, works offline)</label>
+      <label class="check"><input type="radio" name="translation" value="KJV" ${s.translation === 'KJV' ? 'checked' : ''}> King James Version (on the phone, works offline)</label>
       <label class="check"><input type="radio" name="translation" value="ESV" ${s.translation === 'ESV' ? 'checked' : ''}> English Standard Version (needs a free key and a connection)</label>
       <div class="esv ${s.translation === 'ESV' ? '' : 'hidden'}">
         <label>ESV API key<input name="esvKey" value="${esc(s.esvKey)}" autocomplete="off" spellcheck="false" placeholder="Paste your key"></label>

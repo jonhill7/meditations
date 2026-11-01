@@ -49,7 +49,8 @@ export function parseRef(ref) {
 export function formatRef(ref) {
   const r = typeof ref === 'string' ? parseRef(ref) : ref;
   if (!r) return String(ref);
-  let s = `${bookName(r.book)} ${r.chapter}`;
+  // A single psalm is "Psalm", the book is "Psalms".
+  let s = `${r.book === 'PSA' ? 'Psalm' : bookName(r.book)} ${r.chapter}`;
   if (r.verse) {
     s += `:${r.verse}`;
     if (r.endChapter !== r.chapter) s += `–${r.endChapter}:${r.endVerse}`;

@@ -5,6 +5,7 @@ import { getPassage } from '../bible.js';
 import { verseForDate } from '../votd.js';
 import { esc, longDate, daysBetween, toast } from '../ui.js';
 import { prayedToday, prayersDue, versesHtml, toggleVerse } from './prayers.js';
+import { inMemory, addToMemory } from './memory.js';
 import { todaysReflections, toggleReflection, reflectionListHtml } from './reflect.js';
 
 export function planDayHtml(idx) {
@@ -67,6 +68,9 @@ export async function render(main) {
       </div>
       <blockquote class="votd" id="votd">…</blockquote>
       ${doneToday ? '' : `<label class="check"><input type="checkbox" data-act="verse" ${d.verse ? 'checked' : ''}> Count this as today's reading</label>`}
+      ${inMemory([verseRef])
+        ? '<p class="small muted">✓ In your memory verses</p>'
+        : '<button class="btn ghost small" data-act="memorize">Memorize this verse</button>'}
     </section>
 
     <section class="card">
@@ -123,6 +127,9 @@ export async function render(main) {
     } else if (act === 'ahead') {
       main.querySelector('.ahead').classList.toggle('hidden');
       return;
+    } else if (act === 'memorize') {
+      addToMemory([verseRef]);
+      toast('Added to your memory verses');
     } else if (act === 'prayed') {
       const p = state.prayers.find(p => p.id === btn.dataset.id);
       p.prayed = [...(p.prayed ?? []), date];

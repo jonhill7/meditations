@@ -8,8 +8,9 @@ import * as progress from './views/progress.js';
 import * as notes from './views/notes.js';
 import * as settings from './views/settings.js';
 import * as planView from './views/plan.js';
+import * as memory from './views/memory.js';
 
-const ROUTES = { today, read, prayers, reflect, progress, notes, settings, plan: planView };
+const ROUTES = { today, read, prayers, reflect, progress, notes, settings, plan: planView, memory };
 const main = $('#main');
 
 export function applyLook() {

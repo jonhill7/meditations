@@ -21,6 +21,12 @@ or switching phones erases it.
   and how it was answered.
 - **Reflect**: short reminders in your own words ("Stay calm") to read each
   morning.
+- **Memory**: the Navigators' Topical Memory System (60 verses, 5 packs,
+  by topic) plus any verse you add, from the Memory page, the reader, or the
+  verse of the day. New verses are learned in five steps with more and more
+  words hidden, then reviewed on a spaced schedule (SM-2 style: grade each
+  recall and the gap grows). Switch between BSB, KJV and ESV. Memorized
+  verses get a light highlight in the Bible in every translation.
 - **Progress**: a calendar of your mornings (no streaks), plan progress, and a
   few totals.
 - **Settings**: light/dark, text size, ESV, commentary choice, plan position,
@@ -41,8 +47,8 @@ verse on a short morning) and checked off your reflection.
 
 ## Bible text
 
-- **BSB** (Berean Standard Bible, public domain) ships with the app and works
-  offline.
+- **BSB** (Berean Standard Bible, public domain) and **KJV** ship with the
+  app and work offline.
 - **ESV**: add a free personal key from
   [api.esv.org](https://api.esv.org/account/create-application/) in Settings.
   Only the passage reference is sent to Crossway. The app keeps at most 12
@@ -85,11 +91,11 @@ npm test          # reading plan checks (Node 18+)
 
 `tools/build_data.py` regenerates `data/` from
 [scrollmapper/bible_databases](https://github.com/scrollmapper/bible_databases)
-(`formats/json/BSB.json` and `sources/extras/cross_references.txt`).
+(`formats/json/BSB.json`, `formats/json/KJV.json` and `sources/extras/cross_references.txt`).
 
 ## Credits
 
-- Berean Standard Bible: public domain (CC0).
+- Berean Standard Bible: public domain (CC0). King James Version: public domain.
 - Cross references: [OpenBible.info](https://www.openbible.info/labs/cross-references/), CC-BY.
 - ESV: © 2001 Crossway. Used through the ESV API under its terms.
 - Commentaries: public domain, via [bible.helloao.org](https://bible.helloao.org).

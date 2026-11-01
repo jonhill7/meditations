@@ -1,14 +1,16 @@
 import { state, save, uid, today } from '../store.js';
 import { BOOKS, BOOK, bookName, formatRef, parseRef } from '../books.js';
-import { getChapter, getPassage, crossRefs, getCommentary, COMMENTARIES } from '../bible.js';
+import { getChapter, getPassage, crossRefs, getCommentary, COMMENTARIES, TRANSLATIONS } from '../bible.js';
 import { esc, sheet, toast } from '../ui.js';
 import { addVerseToPrayer } from './prayers.js';
+import { memorizedKeys, inMemory, addToMemory } from './memory.js';
 
 export const tab = 'read';
 
 const COPYRIGHT = {
   ESV: 'Scripture quotations are from the ESV® Bible (The Holy Bible, English Standard Version®), © 2001 by Crossway, a publishing ministry of Good News Publishers. Used by permission. All rights reserved.',
   BSB: 'Berean Standard Bible. Public domain.',
+  KJV: 'King James Version. Public domain.',
 };
 
 export async function render(main, [book, chapter, extra]) {
@@ -92,13 +94,14 @@ async function renderChapter(main, book, chapter, extra) {
   if (!location.hash.startsWith(`#/read/${book}/${chapter}`)) return;
 
   const { verses, translation, note } = result;
-  main.querySelector('#translation').textContent = translation === 'ESV' ? 'English Standard Version' : 'Berean Standard Bible';
+  main.querySelector('#translation').textContent = TRANSLATIONS[translation];
   if (note) main.querySelector('#translation').textContent += ` · ${note}`;
   main.querySelector('#copyright').textContent = COPYRIGHT[translation];
+  const memorized = memorizedKeys();
   main.querySelector('#text').innerHTML = verses.map((t, i) => {
     const ref = `${book} ${chapter}:${i + 1}`;
     if (!t) return '';
-    return `<span class="verse ${state.notes[ref] ? 'has-note' : ''}" data-v="${i + 1}" role="button" tabindex="0"><sup>${i + 1}</sup>${esc(t)} </span>`;
+    return `<span class="verse ${state.notes[ref] ? 'has-note' : ''} ${memorized.has(ref) ? 'memorized' : ''}" data-v="${i + 1}" role="button" tabindex="0"><sup>${i + 1}</sup>${esc(t)} </span>`;
   }).join('');
 
   if (focusVerse) {
@@ -133,6 +136,12 @@ function study(book, chapter, verse, text, translation, verseEl) {
       <h3>My note</h3>
       <textarea class="note" rows="4" placeholder="What stands out to you?">${esc(note?.text)}</textarea>
       <p class="small muted saved-line">${note ? `Saved ${esc(new Date(note.updated).toLocaleDateString())}` : 'Saves as you type, on this phone only.'}</p>
+    </section>
+    <section>
+      <h3>Memorize</h3>
+      ${inMemory([ref])
+        ? '<p class="small muted">✓ In your memory verses. <a href="#/memory">Open Memory</a></p>'
+        : '<button class="btn ghost small" data-act="memorize">Add to memory verses</button>'}
     </section>
     <section>
       <h3>Pray with this verse</h3>
@@ -176,6 +185,11 @@ function study(book, chapter, verse, text, translation, verseEl) {
       clearTimeout(timer);
       commit();
     }
+  });
+
+  d.querySelector('[data-act="memorize"]')?.addEventListener('click', e => {
+    addToMemory([ref]);
+    e.target.outerHTML = '<p class="small muted">✓ Added. <a href="#/memory">Start learning it</a></p>';
   });
 
   d.querySelector('[data-act="add-to-prayer"]').onclick = () => {

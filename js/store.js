@@ -30,6 +30,8 @@ function blank() {
     reminders: [],
     prayers: [],
     notes: {},
+    // Scripture memory cards, keyed by card id (see memory.js).
+    memory: { translation: 'BSB', cards: {}, log: {} },
     lastBackup: null,
   };
 }
@@ -46,7 +48,12 @@ function load() {
 
 function migrate(data) {
   const base = blank();
-  return { ...base, ...data, settings: { ...base.settings, ...data.settings }, plan: { ...base.plan, ...data.plan } };
+  return {
+    ...base, ...data,
+    settings: { ...base.settings, ...data.settings },
+    plan: { ...base.plan, ...data.plan },
+    memory: { ...base.memory, ...data.memory },
+  };
 }
 
 export const state = load();

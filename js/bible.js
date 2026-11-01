@@ -1,21 +1,29 @@
 import { state } from './store.js';
 import { parseRef } from './books.js';
 
-// Scripture text. BSB ships with the app. ESV is fetched from Crossway when
-// the user has added a key; only the passage reference is sent.
+// Scripture text. BSB and KJV ship with the app. ESV is fetched from
+// Crossway when the user has added a key; only the passage reference is sent.
 
-const bsbBooks = new Map();
-async function bsbBook(code) {
-  if (!bsbBooks.has(code)) {
-    const p = fetch(`data/bsb/${code}.json`).then(r => {
+export const TRANSLATIONS = {
+  BSB: 'Berean Standard Bible',
+  KJV: 'King James Version',
+  ESV: 'English Standard Version',
+};
+
+const offlineBooks = new Map();
+async function offlineBook(translation, code) {
+  const key = `${translation}/${code}`;
+  if (!offlineBooks.has(key)) {
+    const p = fetch(`data/${translation.toLowerCase()}/${code}.json`).then(r => {
       if (!r.ok) throw new Error(`Could not load ${code}`);
       return r.json();
     });
-    bsbBooks.set(code, p);
-    p.catch(() => bsbBooks.delete(code));
+    offlineBooks.set(key, p);
+    p.catch(() => offlineBooks.delete(key));
   }
-  return bsbBooks.get(code);
+  return offlineBooks.get(key);
 }
+const bsbBook = code => offlineBook('BSB', code);
 
 const ESV_CACHE = 'esv-v1';
 // Crossway's terms limit how much ESV text an app may store, so keep only a
@@ -69,13 +77,19 @@ async function esvChapter(code, chapter) {
   return parseEsv(body.passages[0]);
 }
 
-export function wantsEsv() {
-  return state.settings.translation === 'ESV' && state.settings.esvKey.trim() !== '';
+export function hasEsvKey() {
+  return state.settings.esvKey.trim() !== '';
+}
+
+// Translations that can be picked right now.
+export function availableTranslations() {
+  return Object.keys(TRANSLATIONS).filter(t => t !== 'ESV' || hasEsvKey());
 }
 
 // Returns { verses: string[], translation, note? }.
-export async function getChapter(code, chapter) {
-  if (wantsEsv()) {
+export async function getChapter(code, chapter, translation = state.settings.translation) {
+  if (translation === 'KJV') return { verses: (await offlineBook('KJV', code))[chapter - 1], translation: 'KJV' };
+  if (translation === 'ESV' && hasEsvKey()) {
     try {
       return { verses: await esvChapter(code, chapter), translation: 'ESV' };
     } catch (e) {
@@ -88,11 +102,11 @@ export async function getChapter(code, chapter) {
 }
 
 // Text for a reference like 'JHN 3:16-18' as [{ verse, text }].
-export async function getPassage(ref) {
+export async function getPassage(ref, translationWanted) {
   const r = typeof ref === 'string' ? parseRef(ref) : ref;
   const out = [];
   for (let c = r.chapter; c <= r.endChapter; c++) {
-    const { verses, translation } = await getChapter(r.book, c);
+    const { verses, translation } = await getChapter(r.book, c, translationWanted);
     const from = c === r.chapter ? (r.verse ?? 1) : 1;
     const to = c === r.endChapter ? (r.endVerse ?? verses.length) : verses.length;
     for (let v = from; v <= Math.min(to, verses.length); v++) {
