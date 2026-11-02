@@ -54,6 +54,14 @@ verse on a short morning) and checked off your reflection.
   Only the passage reference is sent to Crossway. The app keeps at most 12
   recent ESV chapters on the phone (per Crossway's limits) and falls back to
   the BSB when it can't reach the ESV.
+- **NIV and others via API.Bible**: add your own key from
+  [api.bible](https://api.bible) in Settings → Bible text → API.Bible key, tap
+  "Find my translations" and tick the ones you want. The key is stored only on
+  the phone, never in this repo. Licensed translations like the NIV must be
+  enabled for your key by API.Bible/the publisher. The app shows each text's
+  copyright notice, keeps at most 12 recent chapters per source on the phone,
+  and reports displays through API.Bible's Fair Use Management System as its
+  terms require.
 - NKJV and CSB have no public API a personal app can use, so they aren't
   offered.
 

@@ -1,6 +1,6 @@
 import { state, save, uid, today } from '../store.js';
 import { BOOKS, BOOK, bookName, formatRef, parseRef } from '../books.js';
-import { getChapter, getPassage, crossRefs, getCommentary, COMMENTARIES, TRANSLATIONS } from '../bible.js';
+import { getChapter, getPassage, crossRefs, getCommentary, COMMENTARIES, translationName } from '../bible.js';
 import { esc, sheet, toast } from '../ui.js';
 import { addVerseToPrayer } from './prayers.js';
 import { memorizedKeys, inMemory, addToMemory } from './memory.js';
@@ -93,10 +93,10 @@ async function renderChapter(main, book, chapter, extra) {
   // The person may have navigated away while this loaded.
   if (!location.hash.startsWith(`#/read/${book}/${chapter}`)) return;
 
-  const { verses, translation, note } = result;
-  main.querySelector('#translation').textContent = TRANSLATIONS[translation];
+  const { verses, translation, note, copyright } = result;
+  main.querySelector('#translation').textContent = translationName(translation);
   if (note) main.querySelector('#translation').textContent += ` · ${note}`;
-  main.querySelector('#copyright').textContent = COPYRIGHT[translation];
+  main.querySelector('#copyright').textContent = copyright || COPYRIGHT[translation] || '';
   const memorized = memorizedKeys();
   main.querySelector('#text').innerHTML = verses.map((t, i) => {
     const ref = `${book} ${chapter}:${i + 1}`;

@@ -2,7 +2,9 @@ import { state } from './store.js';
 import { parseRef } from './books.js';
 
 // Scripture text. BSB and KJV ship with the app. ESV is fetched from
-// Crossway when the user has added a key; only the passage reference is sent.
+// Crossway, and other licensed translations (like the NIV) from API.Bible,
+// when the user has added their own key in Settings. Keys stay on the phone
+// and only the passage reference is sent.
 
 export const TRANSLATIONS = {
   BSB: 'Berean Standard Bible',
@@ -26,9 +28,6 @@ async function offlineBook(translation, code) {
 const bsbBook = code => offlineBook('BSB', code);
 
 const ESV_CACHE = 'esv-v1';
-// Crossway's terms limit how much ESV text an app may store, so keep only a
-// handful of recent chapters on the phone.
-const ESV_MAX_CHAPTERS = 12;
 
 function esvUrl(code, chapter) {
   const q = new URLSearchParams({
@@ -60,20 +59,85 @@ export function parseEsv(text) {
   return Array.from(verses, v => v ?? '');
 }
 
-async function esvChapter(code, chapter) {
-  const url = esvUrl(code, chapter);
-  const cache = 'caches' in self ? await caches.open(ESV_CACHE) : null;
+// Licensed texts may only be kept on the phone in small amounts, so each
+// source keeps just its most recent chapters.
+const MAX_STORED_CHAPTERS = 12;
+
+async function cachedJson(cacheName, url, init) {
+  const cache = 'caches' in self ? await caches.open(cacheName) : null;
   const hit = cache && (await cache.match(url));
-  if (hit) return parseEsv((await hit.json()).passages[0]);
-  const res = await fetch(url, { headers: { Authorization: `Token ${state.settings.esvKey.trim()}` } });
-  if (!res.ok) throw new Error(res.status === 401 || res.status === 403 ? 'ESV key was not accepted' : `ESV error ${res.status}`);
+  if (hit) return hit.json();
+  const res = await fetch(url, init);
+  if (!res.ok) {
+    const e = new Error(res.status === 401 || res.status === 403 ? 'key was not accepted' : `error ${res.status}`);
+    e.status = res.status;
+    throw e;
+  }
   const body = await res.json();
-  if (!body.passages?.length) throw new Error('ESV returned no text');
   if (cache) {
     await cache.put(url, new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } }));
     const keys = await cache.keys();
-    for (const k of keys.slice(0, Math.max(0, keys.length - ESV_MAX_CHAPTERS))) await cache.delete(k);
+    for (const k of keys.slice(0, Math.max(0, keys.length - MAX_STORED_CHAPTERS))) await cache.delete(k);
   }
+  return body;
+}
+
+// API.Bible (rest.api.bible). Book ids are the same USFM codes we use.
+const API_BIBLE = 'https://rest.api.bible/v1';
+const API_BIBLE_CACHE = 'apibible-v1';
+
+function apiBibleHeaders() {
+  return { 'api-key': state.settings.apiBibleKey.trim() };
+}
+
+export function hasApiBibleKey() {
+  return (state.settings.apiBibleKey ?? '').trim() !== '';
+}
+
+// English Bibles the key can read: [{ id, abbr, name }].
+export async function listApiBibles() {
+  const res = await fetch(`${API_BIBLE}/bibles?language=eng`, { headers: apiBibleHeaders() });
+  if (res.status === 401 || res.status === 403) throw new Error('API.Bible did not accept this key.');
+  if (!res.ok) throw new Error(`API.Bible error ${res.status}.`);
+  const { data } = await res.json();
+  return data
+    .map(b => ({ id: b.id, abbr: (b.abbreviationLocal || b.abbreviation || '').toUpperCase(), name: b.nameLocal || b.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// API.Bible's terms ask apps to report each display of licensed text through
+// its Fair Use Management System. This sends only an anonymous token.
+function reportFums(meta) {
+  const src = /src="([^"]+)"/.exec(meta?.fumsNoScript ?? '')?.[1];
+  if (src) new Image().src = src.replace(/&amp;/g, '&');
+}
+
+async function apiBibleChapter(bible, code, chapter) {
+  const q = new URLSearchParams({
+    'content-type': 'text',
+    'include-notes': 'false',
+    'include-titles': 'false',
+    'include-chapter-numbers': 'false',
+    'include-verse-numbers': 'true',
+    'include-verse-spans': 'false',
+  });
+  const body = await cachedJson(API_BIBLE_CACHE, `${API_BIBLE}/bibles/${bible.id}/chapters/${code}.${chapter}?${q}`, { headers: apiBibleHeaders() });
+  reportFums(body.meta);
+  return { verses: parseEsv(body.data.content), copyright: body.data.copyright };
+}
+
+function apiBibleFor(translation) {
+  return hasApiBibleKey() ? (state.settings.apiBibles ?? []).find(b => b.abbr === translation) : null;
+}
+
+async function esvChapter(code, chapter) {
+  let body;
+  try {
+    body = await cachedJson(ESV_CACHE, esvUrl(code, chapter), { headers: { Authorization: `Token ${state.settings.esvKey.trim()}` } });
+  } catch (e) {
+    throw new Error(e.status ? `ESV ${e.message}` : e.message);
+  }
+  if (!body.passages?.length) throw new Error('ESV returned no text');
   return parseEsv(body.passages[0]);
 }
 
@@ -83,12 +147,28 @@ export function hasEsvKey() {
 
 // Translations that can be picked right now.
 export function availableTranslations() {
-  return Object.keys(TRANSLATIONS).filter(t => t !== 'ESV' || hasEsvKey());
+  const builtIn = Object.keys(TRANSLATIONS).filter(t => t !== 'ESV' || hasEsvKey());
+  const api = hasApiBibleKey() ? (state.settings.apiBibles ?? []).map(b => b.abbr) : [];
+  return [...builtIn, ...api.filter(a => !builtIn.includes(a))];
 }
 
-// Returns { verses: string[], translation, note? }.
+export function translationName(t) {
+  return TRANSLATIONS[t] ?? (state.settings.apiBibles ?? []).find(b => b.abbr === t)?.name ?? t;
+}
+
+// Returns { verses: string[], translation, note?, copyright? }.
 export async function getChapter(code, chapter, translation = state.settings.translation) {
   if (translation === 'KJV') return { verses: (await offlineBook('KJV', code))[chapter - 1], translation: 'KJV' };
+  const apiBible = apiBibleFor(translation);
+  if (apiBible) {
+    try {
+      return { ...(await apiBibleChapter(apiBible, code, chapter)), translation };
+    } catch (e) {
+      const book = await bsbBook(code);
+      const why = navigator.onLine ? (e.status ? `API.Bible ${e.message}` : e.message) : 'You are offline';
+      return { verses: book[chapter - 1], translation: 'BSB', note: `${why}, so this is the BSB.` };
+    }
+  }
   if (translation === 'ESV' && hasEsvKey()) {
     try {
       return { verses: await esvChapter(code, chapter), translation: 'ESV' };

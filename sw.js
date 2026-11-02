@@ -2,7 +2,7 @@
 // ('v10+abc1234'), so every deploy gets a fresh shell cache and phones pick up
 // the new version. A new file under js/, css/ or icons/ must be added to
 // SHELL_FILES (tests/precache.test.mjs checks).
-const VERSION = 'v10';
+const VERSION = 'v11';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data-v1';
 
@@ -34,7 +34,7 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
-    const keep = [SHELL, DATA, 'esv-v1', 'commentary-v1'];
+    const keep = [SHELL, DATA, 'esv-v1', 'apibible-v1', 'commentary-v1'];
     for (const key of await caches.keys()) if (!keep.includes(key)) await caches.delete(key);
     await self.clients.claim();
   })());

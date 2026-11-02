@@ -1,6 +1,6 @@
 import { state, save, exportData, importData, resetAll, today } from '../store.js';
 import { buildPlan } from '../plan.js';
-import { COMMENTARIES, getChapter, prefetchCommentary } from '../bible.js';
+import { COMMENTARIES, getChapter, prefetchCommentary, availableTranslations, translationName, listApiBibles, hasApiBibleKey } from '../bible.js';
 import { esc, toast, shortDate } from '../ui.js';
 
 export const tab = 'settings';
@@ -26,14 +26,22 @@ export async function render(main) {
 
     <section class="card">
       <h2>Bible text</h2>
-      <label class="check"><input type="radio" name="translation" value="BSB" ${s.translation === 'BSB' ? 'checked' : ''}> Berean Standard Bible (on the phone, works offline)</label>
-      <label class="check"><input type="radio" name="translation" value="KJV" ${s.translation === 'KJV' ? 'checked' : ''}> King James Version (on the phone, works offline)</label>
-      <label class="check"><input type="radio" name="translation" value="ESV" ${s.translation === 'ESV' ? 'checked' : ''}> English Standard Version (needs a free key and a connection)</label>
-      <div class="esv ${s.translation === 'ESV' ? '' : 'hidden'}">
+      ${availableTranslations().map(t => `<label class="check"><input type="radio" name="translation" value="${esc(t)}" ${s.translation === t ? 'checked' : ''}> ${esc(translationName(t))}${{ BSB: ' (offline)', KJV: ' (offline)' }[t] ?? ''}</label>`).join('')}
+      <details class="key-setup">
+        <summary>ESV key</summary>
+      <div class="esv">
         <label>ESV API key<input name="esvKey" value="${esc(s.esvKey)}" autocomplete="off" spellcheck="false" placeholder="Paste your key"></label>
         <p class="small muted">Get a free personal key at <a href="https://api.esv.org/account/create-application/" target="_blank" rel="noopener">api.esv.org</a>. Only the passage you open (like "John 3") is sent to Crossway. When the ESV can't load, the app shows the BSB instead.</p>
         <button class="btn ghost small" data-act="test-esv">Test key</button>
       </div>
+      </details>
+      <details class="key-setup apibible" ${hasApiBibleKey() && !(s.apiBibles ?? []).length ? 'open' : ''}>
+        <summary>API.Bible key (NIV and others)</summary>
+        <label>API.Bible key<input name="apiBibleKey" value="${esc(s.apiBibleKey)}" autocomplete="off" spellcheck="false" placeholder="Paste your key"></label>
+        <p class="small muted">Your key is saved only on this phone, never in the app's code. Only the passage you open is sent to API.Bible, which also receives an anonymous display count its license requires.</p>
+        <button class="btn ghost small" data-act="find-bibles">Find my translations</button>
+        <div class="bible-list"></div>
+      </details>
     </section>
 
     <section class="card">
@@ -67,7 +75,7 @@ export async function render(main) {
 
     <section class="card">
       <h2>Privacy</h2>
-      <p class="small">There are no accounts, analytics or trackers. The only network requests this app makes are for the app itself, ESV passages if you turn them on, and commentary chapters. None include anything you write.</p>
+      <p class="small">There are no accounts, analytics or trackers. The only network requests this app makes are for the app itself, ESV or API.Bible passages if you add a key (API.Bible also gets the anonymous display count its license requires), and commentary chapters. None include anything you write.</p>
       <button class="btn danger small" data-act="reset">Erase everything on this phone</button>
     </section>
   `;
@@ -86,12 +94,28 @@ export async function render(main) {
         return render(main);
       case 'test-esv':
         try {
-          const r = await getChapter('JHN', 1);
+          const r = await getChapter('JHN', 1, 'ESV');
           toast(r.translation === 'ESV' ? 'ESV key works' : r.note);
         } catch (err) {
           toast(err.message);
         }
         return;
+      case 'find-bibles': {
+        const box = main.querySelector('.bible-list');
+        box.innerHTML = '<p class="muted small">Asking API.Bible…</p>';
+        try {
+          const list = (await listApiBibles()).filter(x => !['BSB', 'KJV', 'ESV'].includes(x.abbr));
+          const picked = new Set((s.apiBibles ?? []).map(x => x.id));
+          const niv = list.some(x => x.abbr === 'NIV');
+          box.innerHTML = `
+            ${niv ? '' : '<p class="small"><strong>The NIV isn\'t available to this key.</strong> Licensed translations like the NIV need the publisher\'s approval for your key; you can request access from your API.Bible account.</p>'}
+            ${list.length ? list.map(x => `<label class="check"><input type="checkbox" data-bible="${esc(x.id)}" ${picked.has(x.id) ? 'checked' : ''}> ${esc(x.abbr)}: ${esc(x.name)}</label>`).join('') : '<p class="small muted">No English translations came back for this key.</p>'}`;
+          box._list = list;
+        } catch (err) {
+          box.innerHTML = `<p class="small error">${esc(navigator.onLine ? err.message : 'You are offline.')}</p>`;
+        }
+        return;
+      }
       case 'prefetch': {
         b.disabled = true;
         b.textContent = 'Saving…';
@@ -112,8 +136,20 @@ export async function render(main) {
     const t = e.target;
     if (t.name === 'translation') {
       s.translation = t.value;
-      main.querySelector('.esv').classList.toggle('hidden', t.value !== 'ESV');
-    } else if (t.name === 'esvKey') s.esvKey = t.value.trim();
+    } else if (t.name === 'esvKey' || t.name === 'apiBibleKey') {
+      s[t.name] = t.value.trim();
+      save();
+      return render(main);
+    }
+    else if (t.dataset.bible) {
+      const list = main.querySelector('.bible-list')._list ?? [];
+      const ids = new Set((s.apiBibles ?? []).map(x => x.id));
+      if (t.checked) ids.add(t.dataset.bible);
+      else ids.delete(t.dataset.bible);
+      s.apiBibles = [...(s.apiBibles ?? []).filter(x => ids.has(x.id)), ...list.filter(x => ids.has(x.id) && !(s.apiBibles ?? []).some(y => y.id === x.id))];
+      save();
+      return render(main);
+    }
     else if (t.name === 'commentary') s.commentary = t.value;
     else if (t.name === 'import' && t.files[0]) {
       if (!confirm('Replace everything on this phone with this backup?')) return;

@@ -18,6 +18,9 @@ function blank() {
     settings: {
       translation: 'BSB',
       esvKey: '',
+      // API.Bible key and the translations picked from it: [{ id, abbr, name }].
+      apiBibleKey: '',
+      apiBibles: [],
       commentary: 'matthew-henry',
       theme: 'system',
       textSize: 19,
