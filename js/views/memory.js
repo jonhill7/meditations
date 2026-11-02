@@ -11,8 +11,10 @@ let view = 'mine';
 const cards = () => state.memory.cards;
 
 export function memoryTranslation() {
+  const available = availableTranslations();
+  if (!state.memory.translationPicked && available.includes('NIV')) return 'NIV';
   const t = state.memory.translation;
-  return availableTranslations().includes(t) ? t : 'BSB';
+  return available.includes(t) ? t : 'BSB';
 }
 
 export function inMemory(refs) {
@@ -98,6 +100,7 @@ function renderHome(main) {
     if (!b) return;
     if (b.dataset.tr) {
       state.memory.translation = b.dataset.tr;
+      state.memory.translationPicked = true;
       save();
       return renderHome(main);
     }

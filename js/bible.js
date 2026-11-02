@@ -1,4 +1,5 @@
-import { state } from './store.js';
+import { state, save } from './store.js';
+import { SHARED_BIBLE_SERVER } from './config.js';
 import { parseRef } from './books.js';
 
 // Scripture text. BSB and KJV ship with the app. ESV is fetched from
@@ -90,6 +91,27 @@ function apiBibleHeaders() {
   return { 'api-key': state.settings.apiBibleKey.trim() };
 }
 
+// Translations from the shared server, refreshed at most once a day:
+// [{ id, abbr, name, shared: true }].
+export async function refreshSharedBibles(force = false) {
+  if (!SHARED_BIBLE_SERVER) return false;
+  const s = state.settings;
+  if (!force && s.sharedBiblesAt && Date.now() - s.sharedBiblesAt < 86400_000) return false;
+  try {
+    const res = await fetch(`${SHARED_BIBLE_SERVER}/v1/bibles`);
+    if (!res.ok) return false;
+    const { data } = await res.json();
+    s.sharedBibles = data.map(b => ({ id: b.id, abbr: (b.abbreviationLocal || b.abbreviation || '').toUpperCase(), name: b.nameLocal || b.name, shared: true }));
+    s.sharedBiblesAt = Date.now();
+    // Until someone picks a translation themselves, start them on the NIV.
+    if (!s.translationPicked && s.sharedBibles.some(b => b.abbr === 'NIV')) s.translation = 'NIV';
+    save();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function hasApiBibleKey() {
   return (state.settings.apiBibleKey ?? '').trim() !== '';
 }
@@ -113,6 +135,8 @@ function reportFums(meta) {
 }
 
 async function apiBibleChapter(bible, code, chapter) {
+  const base = bible.shared ? `${SHARED_BIBLE_SERVER}/v1` : API_BIBLE;
+  const init = bible.shared ? {} : { headers: apiBibleHeaders() };
   const q = new URLSearchParams({
     'content-type': 'text',
     'include-notes': 'false',
@@ -121,13 +145,20 @@ async function apiBibleChapter(bible, code, chapter) {
     'include-verse-numbers': 'true',
     'include-verse-spans': 'false',
   });
-  const body = await cachedJson(API_BIBLE_CACHE, `${API_BIBLE}/bibles/${bible.id}/chapters/${code}.${chapter}?${q}`, { headers: apiBibleHeaders() });
+  const body = await cachedJson(API_BIBLE_CACHE, `${base}/bibles/${bible.id}/chapters/${code}.${chapter}?${q}`, init);
   reportFums(body.meta);
   return { verses: parseEsv(body.data.content), copyright: body.data.copyright };
 }
 
+// Translations from API.Bible, your own key's first, then the shared server's.
+function apiBibles() {
+  const own = hasApiBibleKey() ? (state.settings.apiBibles ?? []) : [];
+  const shared = SHARED_BIBLE_SERVER ? (state.settings.sharedBibles ?? []) : [];
+  return [...own, ...shared.filter(b => !own.some(o => o.abbr === b.abbr))];
+}
+
 function apiBibleFor(translation) {
-  return hasApiBibleKey() ? (state.settings.apiBibles ?? []).find(b => b.abbr === translation) : null;
+  return apiBibles().find(b => b.abbr === translation) ?? null;
 }
 
 async function esvChapter(code, chapter) {
@@ -148,12 +179,12 @@ export function hasEsvKey() {
 // Translations that can be picked right now.
 export function availableTranslations() {
   const builtIn = Object.keys(TRANSLATIONS).filter(t => t !== 'ESV' || hasEsvKey());
-  const api = hasApiBibleKey() ? (state.settings.apiBibles ?? []).map(b => b.abbr) : [];
+  const api = apiBibles().map(b => b.abbr);
   return [...builtIn, ...api.filter(a => !builtIn.includes(a))];
 }
 
 export function translationName(t) {
-  return TRANSLATIONS[t] ?? (state.settings.apiBibles ?? []).find(b => b.abbr === t)?.name ?? t;
+  return TRANSLATIONS[t] ?? apiBibleFor(t)?.name ?? t;
 }
 
 // Returns { verses: string[], translation, note?, copyright? }.

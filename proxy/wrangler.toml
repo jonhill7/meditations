@@ -1,0 +1,10 @@
+# Optional: deploy from the command line with `npx wrangler deploy`
+# (then `npx wrangler secret put API_BIBLE_KEY`). The dashboard steps in
+# README.md do the same without any tools.
+name = "meditations-bible"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+TRANSLATIONS = "NIV"
+ALLOWED_ORIGINS = "https://jonhill7.github.io"

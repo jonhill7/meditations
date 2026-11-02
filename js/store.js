@@ -21,6 +21,10 @@ function blank() {
       // API.Bible key and the translations picked from it: [{ id, abbr, name }].
       apiBibleKey: '',
       apiBibles: [],
+      // Translations offered by the shared server (see config.js).
+      sharedBibles: [],
+      sharedBiblesAt: 0,
+      translationPicked: false,
       commentary: 'matthew-henry',
       theme: 'system',
       textSize: 19,

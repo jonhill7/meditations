@@ -1,5 +1,6 @@
 import { state, onChange } from './store.js';
 import { $, $$ } from './ui.js';
+import { refreshSharedBibles } from './bible.js';
 import * as today from './views/today.js';
 import * as read from './views/read.js';
 import * as prayers from './views/prayers.js';
@@ -68,3 +69,4 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   }).catch(e => console.warn('Offline support unavailable', e));
 }
 if (navigator.storage?.persist) navigator.storage.persist();
+refreshSharedBibles().then(changed => changed && route());

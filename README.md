@@ -54,7 +54,11 @@ verse on a short morning) and checked off your reflection.
   Only the passage reference is sent to Crossway. The app keeps at most 12
   recent ESV chapters on the phone (per Crossway's limits) and falls back to
   the BSB when it can't reach the ESV.
-- **NIV and others via API.Bible**: add your own key from
+- **NIV for everyone**: a small server in [`proxy/`](proxy/README.md) holds
+  the API.Bible key as a secret and serves the NIV to every user. Once it's
+  set up and its address is in `js/config.js`, the app offers the NIV by
+  default with no key needed.
+- **NIV and others via your own API.Bible key**: add your own key from
   [api.bible](https://api.bible) in Settings → Bible text → API.Bible key, tap
   "Find my translations" and tick the ones you want. The key is stored only on
   the phone, never in this repo. Licensed translations like the NIV must be

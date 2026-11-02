@@ -2,14 +2,14 @@
 // ('v10+abc1234'), so every deploy gets a fresh shell cache and phones pick up
 // the new version. A new file under js/, css/ or icons/ must be added to
 // SHELL_FILES (tests/precache.test.mjs checks).
-const VERSION = 'v11';
+const VERSION = 'v12';
 const SHELL = `shell-${VERSION}`;
 const DATA = 'data-v1';
 
 const SHELL_FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
-  'js/app.js', 'js/bible.js', 'js/books.js', 'js/plan.js', 'js/store.js', 'js/ui.js', 'js/votd.js', 'js/reflections.js', 'js/memory.js', 'js/tms.js',
+  'js/app.js', 'js/bible.js', 'js/config.js', 'js/books.js', 'js/plan.js', 'js/store.js', 'js/ui.js', 'js/votd.js', 'js/reflections.js', 'js/memory.js', 'js/tms.js',
   'js/views/today.js', 'js/views/read.js', 'js/views/prayers.js', 'js/views/reflect.js',
   'js/views/progress.js', 'js/views/notes.js', 'js/views/settings.js', 'js/views/plan.js',
   'js/views/memory.js',

@@ -36,7 +36,7 @@ export async function render(main) {
       </div>
       </details>
       <details class="key-setup apibible" ${hasApiBibleKey() && !(s.apiBibles ?? []).length ? 'open' : ''}>
-        <summary>API.Bible key (NIV and others)</summary>
+        <summary>Your own API.Bible key (optional)</summary>
         <label>API.Bible key<input name="apiBibleKey" value="${esc(s.apiBibleKey)}" autocomplete="off" spellcheck="false" placeholder="Paste your key"></label>
         <p class="small muted">Your key is saved only on this phone, never in the app's code. Only the passage you open is sent to API.Bible, which also receives an anonymous display count its license requires.</p>
         <button class="btn ghost small" data-act="find-bibles">Find my translations</button>
@@ -136,6 +136,7 @@ export async function render(main) {
     const t = e.target;
     if (t.name === 'translation') {
       s.translation = t.value;
+      s.translationPicked = true;
     } else if (t.name === 'esvKey' || t.name === 'apiBibleKey') {
       s[t.name] = t.value.trim();
       save();
