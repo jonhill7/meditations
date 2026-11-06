@@ -34,8 +34,7 @@ test('feedRich formats for KWGT and escapes brackets', async () => {
   const assert = (await import('node:assert')).default;
   assert.match(r, /^\[s=0\.75\]\[c=#[0-9A-F]+\]FRIDAY, NOVEMBER 6/);
   assert.match(r, /For God \(so\) loved/);
-  const order = ['SCRIPTURE', 'John 3:16', 'PRAYER', '• Wisdom', '• Stay calm', 'MEMORY', 'Romans 8:28'].map(x => r.indexOf(x));
+  const order = ['TODAY\'S READING', 'John 3:16', 'PRAYER', '• Wisdom', 'REFLECT', '• Stay calm', 'MEMORY', 'Romans 8:28'].map(x => r.indexOf(x));
   assert.ok(order.every((x, i) => x >= 0 && (i === 0 || x > order[i - 1])), r);
-  assert.doesNotMatch(r, /REFLECT/);
   assert.match(feedRich([], 'Friday'), /Nothing chosen yet today/);
 });
