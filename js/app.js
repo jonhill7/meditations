@@ -1,6 +1,7 @@
 import { state, onChange } from './store.js';
 import { $, $$ } from './ui.js';
 import { refreshSharedBibles } from './bible.js';
+import { publishIfStale } from './widget.js';
 import * as today from './views/today.js';
 import * as read from './views/read.js';
 import * as prayers from './views/prayers.js';
@@ -70,3 +71,5 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 }
 if (navigator.storage?.persist) navigator.storage.persist();
 refreshSharedBibles().then(changed => changed && route());
+publishIfStale();
+document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && publishIfStale());

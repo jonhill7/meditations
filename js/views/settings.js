@@ -2,6 +2,7 @@ import { state, save, exportData, importData, resetAll, today } from '../store.j
 import { buildPlan } from '../plan.js';
 import { COMMENTARIES, getChapter, prefetchCommentary, availableTranslations, translationName, listApiBibles, hasApiBibleKey } from '../bible.js';
 import { esc, toast, shortDate } from '../ui.js';
+import { widgetSettings, widgetUrl, publishWidget, kwgtFormula } from '../widget.js';
 
 export const tab = 'settings';
 
@@ -9,6 +10,8 @@ export async function render(main) {
   const s = state.settings;
   const persisted = (await navigator.storage?.persisted?.()) ?? false;
   const plan = buildPlan();
+  const ws = widgetSettings();
+  const wurl = widgetUrl();
 
   main.innerHTML = `
     <div class="page-head"><h1>Settings</h1></div>
@@ -64,6 +67,34 @@ export async function render(main) {
     </section>
 
     <section class="card">
+      <h2>Home screen widget</h2>
+      <p class="small">The widget shows only what you pin for today: the verse of the day, verses you tap while reading, and memory verses. It uses the free KWGT app on Android.</p>
+      ${wurl ? `
+        <label class="check"><input type="checkbox" name="widgetReflections" ${ws.reflections ? 'checked' : ''}> Also show the reflections I select each day</label>
+        <label class="check"><input type="checkbox" name="widgetPrayers" ${ws.prayers ? 'checked' : ''}> Also show the titles of prayers I prayed today</label>
+        <p class="small muted">To reach the widget, today's picks are copied to the app's server under a private link and deleted after 3 days. Scripture is always fine to send. Reflections and prayers are your own words, so they're only sent if you turn them on above.</p>
+        <label>Your private widget link<input readonly value="${esc(wurl)}" class="widget-link"></label>
+        <div class="row">
+          <button class="btn ghost small" data-act="copy-widget">Copy link</button>
+          <button class="btn ghost small" data-act="publish-widget">Update widget now</button>
+        </div>
+        <p class="small muted">${ws.lastError ? `Last update failed: ${esc(ws.lastError)}` : ws.lastPublished ? `Last updated ${esc(new Date(ws.lastPublished).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }))}.` : 'Not updated yet.'}</p>
+        <details class="key-setup">
+          <summary>How to set up KWGT</summary>
+          <ol class="small steps">
+            <li>Install <strong>KWGT Kustom Widget Maker</strong> from the Play Store.</li>
+            <li>Long-press your home screen, tap Widgets, and add a KWGT widget (4×2 works well). Tap it to open the editor.</li>
+            <li>Start empty, tap <strong>+</strong> and add a <strong>Text</strong> module.</li>
+            <li>Tap the Text field, then the formula button, and paste:<br><code class="formula">${esc(kwgtFormula(wurl))}</code></li>
+            <li>Set the font size, and in the widget's Layer settings turn on scrolling if you pin a lot.</li>
+            <li>Save (the disk icon). KWGT checks for changes about every 30 minutes; it updates sooner when the screen turns on.</li>
+          </ol>
+          <button class="btn ghost small" data-act="copy-formula">Copy formula</button>
+        </details>
+      ` : '<p class="small muted">The widget needs the app\'s shared server, which isn\'t set up yet.</p>'}
+    </section>
+
+    <section class="card">
       <h2>Backup</h2>
       <p>Your notes, prayers, reminders and progress are stored only in this phone's browser. Clearing Chrome's site data or changing phones erases them, so export a backup now and then and keep the file somewhere safe.</p>
       <p class="small muted">${state.lastBackup ? `Last export: ${esc(shortDate(state.lastBackup))}` : 'No export yet.'} ${persisted ? 'The browser has agreed to keep this data.' : ''}</p>
@@ -75,7 +106,7 @@ export async function render(main) {
 
     <section class="card">
       <h2>Privacy</h2>
-      <p class="small">There are no accounts, analytics or trackers. The only network requests this app makes are for the app itself, ESV or API.Bible passages if you add a key (API.Bible also gets the anonymous display count its license requires), and commentary chapters. None include anything you write.</p>
+      <p class="small">There are no accounts, analytics or trackers. The only network requests this app makes are for the app itself, ESV or API.Bible passages if you add a key (API.Bible also gets the anonymous display count its license requires), and commentary chapters. None include anything you write, except reflections or prayer titles if you choose to show them on the widget.</p>
       <button class="btn danger small" data-act="reset">Erase everything on this phone</button>
     </section>
   `;
@@ -126,6 +157,23 @@ export async function render(main) {
         b.textContent = 'Save the next 14 days for offline';
         return;
       }
+      case 'copy-widget':
+      case 'copy-formula': {
+        const text = b.dataset.act === 'copy-widget' ? wurl : kwgtFormula(wurl);
+        try {
+          await navigator.clipboard.writeText(text);
+          toast('Copied');
+        } catch {
+          toast('Could not copy. Press and hold the link to copy it.');
+        }
+        return;
+      }
+      case 'publish-widget':
+        b.disabled = true;
+        b.textContent = 'Updating…';
+        await publishWidget();
+        toast(ws.lastError ? `Couldn't update: ${ws.lastError}` : 'Widget updated');
+        return render(main);
       case 'reset':
         if (confirm('Erase all notes, prayers, reminders and progress from this phone? Export a backup first if you might want them.') && confirm('Are you sure? This cannot be undone.')) resetAll();
         return;
@@ -149,6 +197,12 @@ export async function render(main) {
       else ids.delete(t.dataset.bible);
       s.apiBibles = [...(s.apiBibles ?? []).filter(x => ids.has(x.id)), ...list.filter(x => ids.has(x.id) && !(s.apiBibles ?? []).some(y => y.id === x.id))];
       save();
+      return render(main);
+    }
+    else if (t.name === 'widgetReflections' || t.name === 'widgetPrayers') {
+      ws[t.name === 'widgetReflections' ? 'reflections' : 'prayers'] = t.checked;
+      save();
+      await publishWidget();
       return render(main);
     }
     else if (t.name === 'commentary') s.commentary = t.value;

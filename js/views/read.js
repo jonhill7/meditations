@@ -4,6 +4,7 @@ import { getChapter, getPassage, crossRefs, getCommentary, COMMENTARIES, transla
 import { esc, sheet, toast } from '../ui.js';
 import { addVerseToPrayer } from './prayers.js';
 import { memorizedKeys, inMemory, addToMemory } from './memory.js';
+import { widgetPicks, toggle, schedulePublish } from '../widget.js';
 
 export const tab = 'read';
 
@@ -98,10 +99,11 @@ async function renderChapter(main, book, chapter, extra) {
   if (note) main.querySelector('#translation').textContent += ` · ${note}`;
   main.querySelector('#copyright').textContent = copyright || COPYRIGHT[translation] || '';
   const memorized = memorizedKeys();
+  const pinned = new Set(widgetPicks().verses);
   main.querySelector('#text').innerHTML = verses.map((t, i) => {
     const ref = `${book} ${chapter}:${i + 1}`;
     if (!t) return '';
-    return `<span class="verse ${state.notes[ref] ? 'has-note' : ''} ${memorized.has(ref) ? 'memorized' : ''}" data-v="${i + 1}" role="button" tabindex="0"><sup>${i + 1}</sup>${esc(t)} </span>`;
+    return `<span class="verse ${state.notes[ref] ? 'has-note' : ''} ${memorized.has(ref) ? 'memorized' : ''} ${pinned.has(ref) ? 'pinned' : ''}" data-v="${i + 1}" role="button" tabindex="0"><sup>${i + 1}</sup>${esc(t)} </span>`;
   }).join('');
 
   if (focusVerse) {
@@ -136,6 +138,10 @@ function study(book, chapter, verse, text, translation, verseEl) {
       <h3>My note</h3>
       <textarea class="note" rows="4" placeholder="What stands out to you?">${esc(note?.text)}</textarea>
       <p class="small muted saved-line">${note ? `Saved ${esc(new Date(note.updated).toLocaleDateString())}` : 'Saves as you type, on this phone only.'}</p>
+    </section>
+    <section>
+      <h3>Widget</h3>
+      <button class="btn ghost small pin ${widgetPicks().verses.includes(ref) ? 'on' : ''}" data-act="pin-verse">${widgetPicks().verses.includes(ref) ? '✓ On today\'s widget (tap to remove)' : 'Pin to today\'s widget'}</button>
     </section>
     <section>
       <h3>Memorize</h3>
@@ -186,6 +192,15 @@ function study(book, chapter, verse, text, translation, verseEl) {
       commit();
     }
   });
+
+  d.querySelector('[data-act="pin-verse"]').onclick = e => {
+    const on = toggle(widgetPicks().verses, ref);
+    save();
+    schedulePublish();
+    verseEl.classList.toggle('pinned', on);
+    e.target.classList.toggle('on', on);
+    e.target.textContent = on ? '✓ On today\'s widget (tap to remove)' : 'Pin to today\'s widget';
+  };
 
   d.querySelector('[data-act="memorize"]')?.addEventListener('click', e => {
     addToMemory([ref]);

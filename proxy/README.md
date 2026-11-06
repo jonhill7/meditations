@@ -27,6 +27,22 @@ Check it from a browser console on the app's page:
 `fetch('https://meditations-bible.<you>.workers.dev/v1/bibles').then(r => r.json())`
 should list the NIV. If the list is empty, the NIV isn't enabled for the key.
 
+## Home screen widget (optional)
+
+The same Worker can hold each phone's widget feed: just today's pinned verses, plus reflections or prayer titles only if that phone turns them on. Each phone gets its own random link, and a feed is deleted after 3 days.
+
+1. In Cloudflare, open **Storage & Databases → KV** and create a namespace named `meditations-widget`.
+2. Open the Worker, then **Settings → Bindings → Add → KV namespace**. Set the variable name to `WIDGET` and pick `meditations-widget`.
+3. Paste the latest `worker.js` into the Worker and deploy.
+
+Then in the app, open **Settings → Home screen widget**, and follow **How to set up KWGT**. In short: install KWGT, add a widget with a Text module, and paste the formula the app gives you. It looks like:
+
+```
+$if(wg("https://YOUR-WORKER/widget/TOKEN", json, .date) = df(yyyy-MM-dd), wg("https://YOUR-WORKER/widget/TOKEN", json, .text), "Open Meditations to pin today's verses")$
+```
+
+The feed also has `title` (the date), `count` and `items` (each with `kind`, `title`, `text`) if you want a fancier layout.
+
 ## Limits
 
 - Cloudflare's free plan allows 100,000 requests a day.

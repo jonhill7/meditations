@@ -6,6 +6,9 @@ import { verseForDate } from '../votd.js';
 import { esc, longDate, daysBetween, toast } from '../ui.js';
 import { prayedToday, prayersDue, versesHtml, toggleVerse } from './prayers.js';
 import { inMemory, addToMemory } from './memory.js';
+import { widgetPicks, widgetSettings, widgetUrl, mergeVerseRefs, toggle, schedulePublish } from '../widget.js';
+import { cardLabel } from '../memory.js';
+import { parseRef as parseVerseRef } from '../books.js';
 import { todaysReflections, toggleReflection, reflectionListHtml } from './reflect.js';
 
 export function planDayHtml(idx) {
@@ -27,6 +30,7 @@ export async function render(main) {
   const reflections = todaysReflections();
   const due = prayersDue(3);
   const verseRef = verseForDate(date);
+  const picks = widgetPicks(date);
 
   const hasData = state.reminders.length || state.prayers.length || Object.keys(state.notes).length || nextDay > 0;
   const backupAge = state.lastBackup ? daysBetween(state.lastBackup, date) : Infinity;
@@ -68,9 +72,12 @@ export async function render(main) {
       </div>
       <blockquote class="votd" id="votd">…</blockquote>
       ${doneToday ? '' : `<label class="check"><input type="checkbox" data-act="verse" ${d.verse ? 'checked' : ''}> Count this as today's reading</label>`}
-      ${inMemory([verseRef])
-        ? '<p class="small muted">✓ In your memory verses</p>'
-        : '<button class="btn ghost small" data-act="memorize">Memorize this verse</button>'}
+      <div class="row">
+        <button class="btn ghost small pin ${picks.votd ? 'on' : ''}" data-act="pin-votd" aria-pressed="${picks.votd}">${picks.votd ? '✓ On your widget' : 'Pin to widget'}</button>
+        ${inMemory([verseRef])
+          ? '<span class="small muted">✓ In your memory verses</span>'
+          : '<button class="btn ghost small" data-act="memorize">Memorize this verse</button>'}
+      </div>
     </section>
 
     <section class="card">
@@ -99,6 +106,8 @@ export async function render(main) {
         : `<p class="muted">Add a few short reminders, like "Stay calm," to read over each morning.</p>
            <label class="check big"><input type="checkbox" data-act="reflected" ${d.reflected ? 'checked' : ''}> I've reflected today</label>`}
     </section>
+
+    ${widgetCardHtml(date, verseRef)}
   `;
 
   getPassage(verseRef).then(vs => {
@@ -134,6 +143,24 @@ export async function render(main) {
       const p = state.prayers.find(p => p.id === btn.dataset.id);
       p.prayed = [...(p.prayed ?? []), date];
       save();
+      if (widgetSettings().prayers) schedulePublish();
+    } else if (act === 'pin-votd') {
+      picks.votd = !picks.votd;
+      save();
+      schedulePublish();
+    } else if (act === 'unpin') {
+      const [kind, value] = btn.dataset.pin.split('::');
+      if (kind === 'votd') picks.votd = false;
+      if (kind === 'memory') picks.memory = picks.memory.filter(id => id !== value);
+      if (kind === 'verse') {
+        const r = parseVerseRef(value);
+        picks.verses = picks.verses.filter(v => {
+          const x = parseVerseRef(v);
+          return !(x.book === r.book && x.chapter === r.chapter && x.verse >= r.verse && x.verse <= r.endVerse);
+        });
+      }
+      save();
+      schedulePublish();
     } else return;
     render(main);
   };
@@ -154,4 +181,41 @@ function statusLine(status, d) {
   if (read) return 'Reading done. Take a moment to reflect.';
   if (d.reflected) return 'Reflection done. Read when you can.';
   return 'Read, reflect, and pray.';
+}
+
+// What today's widget will show, with a way to take things off it.
+function widgetCardHtml(date, verseRef) {
+  const picks = widgetPicks(date);
+  const ws = widgetSettings();
+  const d = state.days[date] ?? {};
+  const rows = [];
+  if (picks.votd) rows.push([formatRef(verseRef), 'votd::']);
+  for (const ref of mergeVerseRefs(picks.verses)) rows.push([formatRef(ref), `verse::${ref}`]);
+  for (const id of picks.memory) {
+    const c = state.memory.cards[id];
+    if (c) rows.push([`${cardLabel(c)} (memory)`, `memory::${id}`]);
+  }
+  const extras = [];
+  const nReflections = Object.keys(d.doneReflections ?? {}).length;
+  if (ws.reflections && nReflections) extras.push(`${nReflections} selected reflection${nReflections === 1 ? '' : 's'}`);
+  const nPrayers = state.prayers.filter(p => p.status === 'active' && (p.prayed ?? []).includes(date)).length;
+  if (ws.prayers && nPrayers) extras.push(`${nPrayers} prayer${nPrayers === 1 ? '' : 's'} you prayed`);
+  if (!rows.length && !extras.length && !ws.lastPublished) return '';
+  const time = ws.lastPublished && ws.lastPublished.slice(0, 10) === new Date().toISOString().slice(0, 10)
+    ? new Date(ws.lastPublished).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : null;
+  const status = !widgetUrl() ? 'The widget isn\'t set up yet. See Settings.'
+    : ws.lastError ? `Couldn't update the widget (${esc(ws.lastError)}). It will try again on your next change.`
+    : time ? `Widget updated at ${time}.` : '';
+  return `
+    <section class="card">
+      <div class="card-head">
+        <h2>On your widget</h2>
+        <a class="small" href="#/settings">Widget settings</a>
+      </div>
+      ${rows.length ? `<ul class="widget-list">${rows.map(([label, pin]) => `
+        <li><span>${esc(label)}</span><button class="icon-btn" data-act="unpin" data-pin="${esc(pin)}" aria-label="Take ${esc(label)} off the widget">✕</button></li>`).join('')}</ul>` : ''}
+      ${extras.length ? `<p class="small">Also: ${extras.join(' and ')}.</p>` : ''}
+      ${!rows.length && !extras.length ? '<p class="muted small">Nothing pinned yet. Pin the verse above, or tap any verse while reading or in Memory.</p>' : ''}
+      ${status ? `<p class="small muted">${status}</p>` : ''}
+    </section>`;
 }

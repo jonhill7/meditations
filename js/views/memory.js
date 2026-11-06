@@ -4,6 +4,7 @@ import { getPassage, availableTranslations } from '../bible.js';
 import { TMS, TMS_VERSES } from '../tms.js';
 import { newCard, cardId, cardLabel, finishLearning, grade, preview, isDue, verseKeys, maskWords, seedFor, LEARN_STAGES } from '../memory.js';
 import { esc, sheet, toast, shortDate, daysBetween } from '../ui.js';
+import { widgetPicks, toggle, schedulePublish } from '../widget.js';
 
 export const tab = 'memory';
 let view = 'mine';
@@ -204,8 +205,16 @@ function detail(c, main) {
     <div class="row">
       <a class="btn primary" href="#/memory/learn/${encodeURIComponent(c.id)}">${c.status === 'learning' ? 'Learn' : 'Practice'}</a>
       <a class="btn ghost" href="#/read/${c.refs[0].split(' ')[0]}/${c.refs[0].split(' ')[1].split(':')[0]}/v${c.refs[0].split(':')[1].split('-')[0]}">Open in Bible</a>
+      <button class="btn ghost pin ${widgetPicks().memory.includes(c.id) ? 'on' : ''}" data-pin>${widgetPicks().memory.includes(c.id) ? '✓ On today\'s widget' : 'Pin to widget'}</button>
       <button class="btn danger" data-remove>Remove</button>
     </div>`);
+  d.querySelector('[data-pin]').onclick = e => {
+    const on = toggle(widgetPicks().memory, c.id);
+    save();
+    schedulePublish();
+    e.target.classList.toggle('on', on);
+    e.target.textContent = on ? '✓ On today\'s widget' : 'Pin to widget';
+  };
   cardText(c).then(({ text, translation }) => {
     d.querySelector('.mem-text').innerHTML = `${esc(text)} <cite>${esc(translation)}</cite>`;
   });

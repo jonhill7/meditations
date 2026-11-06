@@ -35,3 +35,20 @@ test('refuses other origins, other translations and other paths', async () => {
   assert.equal((await worker.fetch(req('/v1/bibles/other/chapters/JHN.3'), env)).status, 403);
   assert.equal((await worker.fetch(req('/v1/bibles/niv-id/books'), env)).status, 404);
 });
+
+test('widget feeds: the app writes, anyone with the token reads', async () => {
+  const store = new Map();
+  const kv = { get: async k => store.get(k) ?? null, put: async (k, v, o) => { assert.equal(o.expirationTtl, 259200); store.set(k, v); } };
+  const e = { ...env, WIDGET: kv };
+  const token = 'a'.repeat(32);
+  const put = (origin, body) => worker.fetch(new Request(`https://proxy.example/widget/${token}`, { method: 'PUT', body, headers: origin ? { Origin: origin } : {} }), e);
+  assert.equal((await put('https://jonhill7.github.io', JSON.stringify({ text: 'hi' }))).status, 200);
+  assert.equal((await put('https://evil.example', '{}')).status, 403);
+  assert.equal((await put(null, '{}')).status, 403);
+  assert.equal((await put('https://jonhill7.github.io', 'x'.repeat(20000))).status, 413);
+  const got = await worker.fetch(new Request(`https://proxy.example/widget/${token}`), e);
+  assert.equal((await got.json()).text, 'hi');
+  const missing = await worker.fetch(new Request(`https://proxy.example/widget/${'b'.repeat(32)}`), e);
+  assert.equal((await missing.json()).count, 0);
+  assert.equal((await worker.fetch(new Request('https://proxy.example/widget/short'), e)).status, 403);
+});

@@ -8,3 +8,8 @@ compatibility_date = "2026-10-01"
 [vars]
 TRANSLATIONS = "NIV"
 ALLOWED_ORIGINS = "https://jonhill7.github.io"
+
+# Home screen widget feeds. Create a KV namespace and put its id here.
+# [[kv_namespaces]]
+# binding = "WIDGET"
+# id = "your-namespace-id"

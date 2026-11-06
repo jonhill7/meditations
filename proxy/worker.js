@@ -6,7 +6,14 @@
 // the app's own web address:
 //   GET /v1/bibles                                  the allowed translations
 //   GET /v1/bibles/{bibleId}/chapters/{BOOK}.{n}    one chapter
-// Nothing is stored here; the app keeps a few recent chapters itself.
+// Nothing is stored for these; the app keeps a few recent chapters itself.
+//
+// It also holds each phone's home-screen widget feed, if a KV namespace is
+// bound as WIDGET:
+//   PUT /widget/{token}   the app saves today's pinned items (from the app only)
+//   GET /widget/{token}   the widget app reads them (any client, needs the token)
+// The token is a long random string only that phone knows. Feeds expire
+// after three days.
 //
 // Settings (Worker → Settings → Variables and Secrets):
 //   API_BIBLE_KEY    secret: your API.Bible key
@@ -40,6 +47,31 @@ function json(body, status, cors) {
   });
 }
 
+const WIDGET_MAX_BYTES = 16 * 1024;
+const WIDGET_TTL_SECONDS = 3 * 86400;
+
+async function handleWidget(request, env, token, fromApp, cors) {
+  if (!env.WIDGET) return json({ error: 'widget storage not set up' }, 501, cors);
+  const key = `widget:${token}`;
+  if (request.method === 'GET') {
+    const feed = await env.WIDGET.get(key);
+    return json(feed ?? { date: null, count: 0, text: 'Open Meditations and pin something for today.', items: [] }, 200, cors);
+  }
+  if (request.method === 'PUT') {
+    if (!fromApp) return json({ error: 'forbidden' }, 403, cors);
+    const body = await request.text();
+    if (body.length > WIDGET_MAX_BYTES) return json({ error: 'too large' }, 413, cors);
+    try {
+      JSON.parse(body);
+    } catch {
+      return json({ error: 'not json' }, 400, cors);
+    }
+    await env.WIDGET.put(key, body, { expirationTtl: WIDGET_TTL_SECONDS });
+    return json({ ok: true }, 200, cors);
+  }
+  return json({ error: 'method not allowed' }, 405, cors);
+}
+
 export default {
   async fetch(request, env) {
     const origins = list(env.ALLOWED_ORIGINS, 'https://jonhill7.github.io');
@@ -49,7 +81,13 @@ export default {
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
       Vary: 'Origin',
     };
+    cors['Access-Control-Allow-Methods'] = 'GET, PUT, OPTIONS';
+    cors['Access-Control-Allow-Headers'] = 'Content-Type';
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+
+    const widget = /^\/widget\/([0-9a-f]{32})$/.exec(new URL(request.url).pathname);
+    if (widget) return handleWidget(request, env, widget[1], origins.includes(origin), cors);
+
     if (request.method !== 'GET') return json({ error: 'method not allowed' }, 405, cors);
     // Browsers always send Origin on these requests; anything else is not the app.
     if (!origins.includes(origin)) return json({ error: 'forbidden' }, 403, cors);

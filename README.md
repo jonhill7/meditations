@@ -29,6 +29,10 @@ or switching phones erases it.
   verses get a light highlight in the Bible in every translation.
 - **Progress**: a calendar of your mornings (no streaks), plan progress, and a
   few totals.
+- **Home screen widget** (Android, via KWGT): pin the verse of the day,
+  verses you tap while reading, or memory verses, and only those show on
+  the widget that day. Reflections and prayer titles can be added from
+  Settings. Needs the shared server; see [proxy/README.md](proxy/README.md).
 - **Settings**: light/dark, text size, ESV, commentary choice, plan position,
   backup export/import.
 

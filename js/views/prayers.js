@@ -2,6 +2,7 @@ import { state, save, today, uid } from '../store.js';
 import { esc, sheet, shortDate, daysBetween, toast } from '../ui.js';
 import { formatRef, parseRef, parseTypedRef } from '../books.js';
 import { getPassage } from '../bible.js';
+import { widgetSettings, schedulePublish } from '../widget.js';
 
 export const tab = 'prayers';
 const DEFAULT_CATEGORIES = ['Family', 'Friends', 'Health', 'Work', 'Church', 'World', 'Personal', 'Thanksgiving'];
@@ -116,6 +117,7 @@ export async function render(main) {
       case 'prayed':
         if (!prayedToday(p)) p.prayed = [...(p.prayed ?? []), today()];
         save();
+        if (widgetSettings().prayers) schedulePublish();
         return render(main);
       case 'reopen':
         p.status = 'active';

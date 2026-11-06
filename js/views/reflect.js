@@ -1,6 +1,7 @@
 import { state, save, today, day, uid } from '../store.js';
 import { pickForDay, markDone, undoDone, scheduleLabel, INTRO_DAYS } from '../reflections.js';
 import { esc, sheet } from '../ui.js';
+import { widgetSettings, schedulePublish } from '../widget.js';
 
 export const tab = 'reflect';
 let showArchived = false;
@@ -37,6 +38,7 @@ export function toggleReflection(id) {
   }
   syncReflected(d);
   save();
+  if (widgetSettings().reflections) schedulePublish();
 }
 
 // The tap-to-gray list shared by Today and Reflect.
