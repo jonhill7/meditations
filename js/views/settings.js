@@ -86,6 +86,8 @@ export async function render(main) {
             <li>Start empty, tap <strong>+</strong> and add a <strong>Text</strong> module.</li>
             <li>Tap the Text field, then the formula button, and paste:<br><code class="formula">${esc(kwgtFormula(wurl))}</code></li>
             <li>Set the font size, and in the widget's Layer settings turn on scrolling if you pin a lot.</li>
+            <li>For a card background: tap <strong>+</strong>, add a <strong>Shape</strong>, set it to fill the widget, round the corners, and give it a dark color like <code>#E61E1B17</code>. In the item list, keep the Shape above the Text so it sits behind it.</li>
+            <li>On the Text: color <code>#F3EDE4</code>, a serif font (the font picker includes Google Fonts such as Lora), and some padding in its Position tab. Dates, references and headings are styled automatically.</li>
             <li>To refresh on demand, open the <strong>Touch</strong> tab, tap <strong>+</strong>, and set the action to <strong>Kustom Action</strong>, then its refresh/update option. Tapping the widget then pulls today's picks right away.</li>
             <li>Save (the disk icon). On its own, KWGT checks for changes about every 30 minutes.</li>
           </ol>

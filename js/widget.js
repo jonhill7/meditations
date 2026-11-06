@@ -43,6 +43,26 @@ export function feedText(items) {
   return items.map(i => (i.kind === 'reflection' || i.kind === 'prayer' ? `• ${i.text}` : `${i.title}\n${i.text}`)).join('\n\n');
 }
 
+// The same text with KWGT's BBCode-style formatting: a small date line,
+// bold references with the translation in grey, and grouped reflections
+// and prayers under small headings.
+const ACCENT = '#D9B48A';
+const GREY = '#A8A29A';
+const plain = t => String(t).replace(/\[/g, '(').replace(/\]/g, ')');
+export function feedRich(items, title) {
+  const out = [`[s=0.75][c=${ACCENT}]${plain(title).toUpperCase()}[/c][/s]`];
+  if (!items.length) out.push('[i]Nothing chosen yet today.[/i]');
+  for (const i of items.filter(i => i.kind === 'verse' || i.kind === 'memory')) {
+    const tag = [i.kind === 'memory' ? 'memory' : '', i.tr].filter(Boolean).join(' · ');
+    out.push(`[b]${plain(i.title)}[/b]${tag ? `  [s=0.7][c=${GREY}]${plain(tag)}[/c][/s]` : ''}\n${plain(i.text)}`);
+  }
+  for (const [kind, label] of [['reflection', 'Reflect'], ['prayer', 'Pray']]) {
+    const list = items.filter(i => i.kind === kind);
+    if (list.length) out.push(`[s=0.75][c=${ACCENT}]${label.toUpperCase()}[/c][/s]\n${list.map(i => `• ${plain(i.text)}`).join('\n')}`);
+  }
+  return out.join('\n\n');
+}
+
 export function toggle(list, value) {
   const i = list.indexOf(value);
   if (i >= 0) list.splice(i, 1);
@@ -117,11 +137,13 @@ export async function buildFeed(date = today()) {
     if (p) items.push({ kind: 'prayer', title: 'Prayer', text: p.title });
   }
   const [y, m, dd] = date.split('-').map(Number);
+  const title = new Date(y, m - 1, dd).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   return {
     date,
-    title: new Date(y, m - 1, dd).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }),
+    title,
     count: items.length,
-    text: items.length ? feedText(items) : 'Nothing pinned yet today.',
+    text: items.length ? feedText(items) : 'Nothing chosen yet today.',
+    rich: feedRich(items, title),
     items,
     updated: new Date().toISOString(),
   };
@@ -166,7 +188,7 @@ export function schedulePublish() {
 
 // KWGT text formula. Shows today's picks, or a prompt when the feed is from an earlier day.
 export function kwgtFormula(url) {
-  return `$if(wg("${url}", json, .date) = df(yyyy-MM-dd), wg("${url}", json, .text), "Open Meditations to pin today's verses")$`;
+  return `$if(wg("${url}", json, .date) = df(yyyy-MM-dd), wg("${url}", json, .rich), "[i]Open Meditations to choose today's verses.[/i]")$`;
 }
 
 // Publish when the app opens, so the widget moves to the new day.

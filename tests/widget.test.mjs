@@ -22,3 +22,21 @@ test('toggle adds then removes', () => {
   assert.equal(toggle(l, 'a'), false);
   assert.deepEqual(l, []);
 });
+
+test('feedRich formats for KWGT and escapes brackets', async () => {
+  const { feedRich } = await import('../js/widget.js');
+  const r = feedRich([
+    { kind: 'verse', title: 'John 3:16', text: 'For God [so] loved', tr: 'BSB' },
+    { kind: 'memory', title: 'Romans 8:28', text: 'And we know', tr: 'ESV' },
+    { kind: 'reflection', text: 'Stay calm' },
+    { kind: 'prayer', text: 'Wisdom' },
+  ], 'Friday, November 6');
+  const assert = (await import('node:assert')).default;
+  assert.match(r, /^\[s=0\.75\]\[c=#[0-9A-F]+\]FRIDAY, NOVEMBER 6/);
+  assert.match(r, /\[b\]John 3:16\[\/b\].*BSB/);
+  assert.match(r, /For God \(so\) loved/);
+  assert.match(r, /memory · ESV/);
+  assert.match(r, /REFLECT\[\/c\]\[\/s\]\n• Stay calm/);
+  assert.match(r, /PRAY\[\/c\]\[\/s\]\n• Wisdom/);
+  assert.match(feedRich([], 'Friday'), /Nothing chosen yet today/);
+});
