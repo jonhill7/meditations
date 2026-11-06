@@ -169,10 +169,12 @@ export function kwgtFormula(url) {
   return `$if(wg("${url}", json, .date) = df(yyyy-MM-dd), wg("${url}", json, .text), "Open Meditations to pin today's verses")$`;
 }
 
-// Publish once a day when the app opens, so the widget moves to the new day.
+// Publish when the app opens, so the widget moves to the new day.
 export function publishIfStale() {
   const ws = widgetSettings();
   if (!SHARED_BIBLE_SERVER || !ws.token) return;
-  const lastDay = ws.lastPublished && today(new Date(ws.lastPublished));
-  if (lastDay !== today()) publishWidget();
+  // Every open, at most once a minute, so the feed always matches this version
+  // of the app and today's choices.
+  if (ws.lastPublished && Date.now() - new Date(ws.lastPublished) < 60_000) return;
+  publishWidget();
 }
