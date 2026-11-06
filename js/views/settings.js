@@ -88,6 +88,7 @@ export async function render(main) {
             <li>Set the font size, and in the widget's Layer settings turn on scrolling if you pin a lot.</li>
             <li>For a card background: tap <strong>+</strong>, add a <strong>Shape</strong>, set it to fill the widget, round the corners, and give it a dark color like <code>#E61E1B17</code>. In the item list, keep the Shape above the Text so it sits behind it.</li>
             <li>On the Text: color <code>#F3EDE4</code>, a serif font (the font picker includes Google Fonts such as Lora), and some padding in its Position tab. Dates, references and headings are styled automatically.</li>
+            <li>To hide memory verses until you tap: open the widget's <strong>Globals</strong> tab, tap <strong>+</strong>, add a <strong>Switch</strong> named <code>hidememory</code> and turn it on. Then on the Text's <strong>Touch</strong> tab, add an action of type <strong>Switch Global</strong> for <code>hidememory</code>. Each tap shows or hides the memory verse text.</li>
             <li>To refresh on demand, open the <strong>Touch</strong> tab, tap <strong>+</strong>, and set the action to <strong>Kustom Action</strong>, then its refresh/update option. Tapping the widget then pulls today's picks right away.</li>
             <li>Save (the disk icon). On its own, KWGT checks for changes about every 30 minutes.</li>
           </ol>
