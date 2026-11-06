@@ -38,13 +38,3 @@ test('feedRich formats for KWGT and escapes brackets', async () => {
   assert.ok(order.every((x, i) => x >= 0 && (i === 0 || x > order[i - 1])), r);
   assert.match(feedRich([], 'Friday'), /Nothing chosen yet today/);
 });
-
-test('feedRich can hide memory verse text', async () => {
-  const { feedRich, kwgtFormula } = await import('../js/widget.js');
-  const items = [{ kind: 'memory', title: 'Romans 8:28', text: 'And we know', tr: 'ESV' }];
-  const hidden = feedRich(items, 'Friday', { hideMemory: true });
-  assert.match(hidden, /Romans 8:28/);
-  assert.doesNotMatch(hidden, /And we know/);
-  assert.match(feedRich(items, 'Friday'), /And we know/);
-  assert.match(kwgtFormula('https://x/widget/abc'), /gv\(hidememory\) = 1, wg\("https:\/\/x\/widget\/abc", json, \.richHidden\)/);
-});

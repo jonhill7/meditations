@@ -48,7 +48,7 @@ export function feedText(items) {
 const ACCENT = '#D9B48A';
 const GREY = '#A8A29A';
 const plain = t => String(t).replace(/\[/g, '(').replace(/\]/g, ')');
-export function feedRich(items, title, { hideMemory = false } = {}) {
+export function feedRich(items, title) {
   const head = label => `[s=0.8][b][c=${ACCENT}]${label.toUpperCase()}[/c][/b][/s]`;
   const verse = i => `[b]${plain(i.title)}[/b]${i.tr ? `  [s=0.7][c=${GREY}]${plain(i.tr)}[/c][/s]` : ''}\n${plain(i.text)}`;
   const of = kind => items.filter(i => i.kind === kind);
@@ -57,10 +57,7 @@ export function feedRich(items, title, { hideMemory = false } = {}) {
   if (of('verse').length) out.push(`${head('Today\'s reading')}\n${of('verse').map(verse).join('\n\n')}`);
   if (of('prayer').length) out.push(`${head('Prayer')}\n${of('prayer').map(i => `• ${plain(i.text)}`).join('\n')}`);
   if (of('reflection').length) out.push(`${head('Reflect')}\n${of('reflection').map(i => `• ${plain(i.text)}`).join('\n')}`);
-  const memo = hideMemory
-    ? i => `[b]${plain(i.title)}[/b]\n[i][c=${GREY}]Say it from memory, then tap to check.[/c][/i]`
-    : verse;
-  if (of('memory').length) out.push(`${head('Memory')}\n${of('memory').map(memo).join('\n\n')}`);
+  if (of('memory').length) out.push(`${head('Memory')}\n${of('memory').map(verse).join('\n\n')}`);
   return out.join('\n\n');
 }
 
@@ -147,7 +144,6 @@ export async function buildFeed(date = today()) {
     count: items.length,
     text: items.length ? feedText(items) : 'Nothing chosen yet today.',
     rich: feedRich(items, title),
-    richHidden: feedRich(items, title, { hideMemory: true }),
     items,
     updated: new Date().toISOString(),
   };
@@ -192,8 +188,7 @@ export function schedulePublish() {
 
 // KWGT text formula. Shows today's picks, or a prompt when the feed is from an earlier day.
 export function kwgtFormula(url) {
-  const get = path => `wg("${url}", json, ${path})`;
-  return `$if(${get('.date')} = df(yyyy-MM-dd), if(gv(hidememory) = 1, ${get('.richHidden')}, ${get('.rich')}), "[i]Open Meditations to choose today's verses.[/i]")$`;
+  return `$if(wg("${url}", json, .date) = df(yyyy-MM-dd), wg("${url}", json, .rich), "[i]Open Meditations to choose today's verses.[/i]")$`;
 }
 
 // Publish when the app opens, so the widget moves to the new day.
