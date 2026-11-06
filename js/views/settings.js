@@ -68,11 +68,10 @@ export async function render(main) {
 
     <section class="card">
       <h2>Home screen widget</h2>
-      <p class="small">The widget shows only what you pin for today: the verse of the day, verses you tap while reading, and memory verses. It uses the free KWGT app on Android.</p>
+      <p class="small">The widget shows what you choose today: the verse of the day once you check it as read, verses you pin while reading, memory verses you work on, reflections you select, and prayers you add. It uses the free KWGT app on Android.</p>
       ${wurl ? `
         <label class="check"><input type="checkbox" name="widgetReflections" ${ws.reflections ? 'checked' : ''}> Also show the reflections I select each day</label>
-        <label class="check"><input type="checkbox" name="widgetPrayers" ${ws.prayers ? 'checked' : ''}> Also show the titles of prayers I prayed today</label>
-        <p class="small muted">To reach the widget, today's picks are copied to the app's server under a private link and deleted after 3 days. Scripture is always fine to send. Reflections you select are included unless you turn them off. Prayer titles are only sent if you turn them on.</p>
+        <p class="small muted">To reach the widget, today's picks are copied to the app's server under a private link and deleted after 3 days. Scripture is always fine to send. Reflections you select are included unless you turn this off. Prayer titles are only sent for prayers you add to the widget.</p>
         <label>Your private widget link<input readonly value="${esc(wurl)}" class="widget-link"></label>
         <div class="row">
           <button class="btn ghost small" data-act="copy-widget">Copy link</button>
@@ -87,7 +86,8 @@ export async function render(main) {
             <li>Start empty, tap <strong>+</strong> and add a <strong>Text</strong> module.</li>
             <li>Tap the Text field, then the formula button, and paste:<br><code class="formula">${esc(kwgtFormula(wurl))}</code></li>
             <li>Set the font size, and in the widget's Layer settings turn on scrolling if you pin a lot.</li>
-            <li>Save (the disk icon). KWGT checks for changes about every 30 minutes; it updates sooner when the screen turns on.</li>
+            <li>To refresh on demand, open the <strong>Touch</strong> tab, tap <strong>+</strong>, and set the action to <strong>Kustom Action</strong>, then its refresh/update option. Tapping the widget then pulls today's picks right away.</li>
+            <li>Save (the disk icon). On its own, KWGT checks for changes about every 30 minutes.</li>
           </ol>
           <button class="btn ghost small" data-act="copy-formula">Copy formula</button>
         </details>
@@ -106,7 +106,7 @@ export async function render(main) {
 
     <section class="card">
       <h2>Privacy</h2>
-      <p class="small">There are no accounts, analytics or trackers. The only network requests this app makes are for the app itself, ESV or API.Bible passages if you add a key (API.Bible also gets the anonymous display count its license requires), and commentary chapters. None include anything you write, except reflections or prayer titles if you choose to show them on the widget.</p>
+      <p class="small">There are no accounts, analytics or trackers. The only network requests this app makes are for the app itself, ESV or API.Bible passages if you add a key (API.Bible also gets the anonymous display count its license requires), and commentary chapters. None include anything you write, except the reflections and prayer titles you put on the widget.</p>
       <button class="btn danger small" data-act="reset">Erase everything on this phone</button>
     </section>
   `;
@@ -199,8 +199,8 @@ export async function render(main) {
       save();
       return render(main);
     }
-    else if (t.name === 'widgetReflections' || t.name === 'widgetPrayers') {
-      ws[t.name === 'widgetReflections' ? 'reflections' : 'prayers'] = t.checked;
+    else if (t.name === 'widgetReflections') {
+      ws.reflections = t.checked;
       save();
       await publishWidget();
       return render(main);

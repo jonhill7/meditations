@@ -1,8 +1,9 @@
 // Home-screen widget feed.
 //
-// The widget shows only what you pin for the day: the verse of the day,
-// verses from your reading, memory verses, and (if you allow it in
-// Settings) the reflections you selected and prayers you prayed. The app
+// The widget shows what you chose for the day: the verse of the day once
+// you check it as read, verses from your reading, memory verses you worked
+// on, the reflections you selected (unless turned off in Settings), and
+// prayers you put on it. The app
 // writes that day's picks to a private link on the shared server, and a
 // widget app such as KWGT reads it. Nothing else is sent.
 import { state, save, today, day } from './store.js';
@@ -12,14 +13,16 @@ import { verseForDate } from './votd.js';
 import { SHARED_BIBLE_SERVER } from './config.js';
 
 export function widgetSettings() {
-  const ws = (state.settings.widget ??= { token: '', reflections: true, prayers: false, lastPublished: null, lastError: null });
+  const ws = (state.settings.widget ??= { token: '', reflections: true, lastPublished: null, lastError: null });
   // Reflections became on by default after the first version; turn them on once.
   if (!ws.v2) Object.assign(ws, { reflections: true, v2: true });
   return ws;
 }
 
 export function widgetPicks(date = today()) {
-  return (day(date).widget ??= { votd: false, verses: [], memory: [] });
+  const w = (day(date).widget ??= { verses: [], memory: [] });
+  w.prayers ??= [];
+  return w;
 }
 
 // ['JHN 3:16', 'JHN 3:17', 'ROM 8:28'] -> ['JHN 3:16-17', 'ROM 8:28']
@@ -51,9 +54,23 @@ export function isPinnedVerse(ref) {
   return widgetPicks().verses.includes(ref);
 }
 
+// The verse of the day is on the widget when it's checked as read, unless taken off.
+export function votdOnWidget(date = today()) {
+  const d = day(date);
+  return !!d.verse && !widgetPicks(date).votdHidden;
+}
+
+// Memory verses learned, practiced or reviewed today go on the widget.
+export function addMemoryToday(id) {
+  const p = widgetPicks();
+  if (p.memory.includes(id) || (p.memoryHidden ?? []).includes(id)) return;
+  p.memory.push(id);
+  schedulePublish();
+}
+
 export function pinCount() {
   const p = widgetPicks();
-  return (p.votd ? 1 : 0) + mergeVerseRefs(p.verses).length + p.memory.length;
+  return (votdOnWidget() ? 1 : 0) + mergeVerseRefs(p.verses).length + p.memory.length;
 }
 
 async function passageText(refs, translation) {
@@ -72,7 +89,7 @@ export async function buildFeed(date = today()) {
   const ws = widgetSettings();
   const d = state.days[date] ?? {};
   const items = [];
-  if (picks.votd) {
+  if (votdOnWidget(date)) {
     const ref = verseForDate(date);
     const { text, tr } = await passageText([ref]);
     items.push({ kind: 'verse', title: formatRef(ref), text, tr });
@@ -95,10 +112,9 @@ export async function buildFeed(date = today()) {
       if (r) items.push({ kind: 'reflection', title: 'Reflection', text: r.text });
     }
   }
-  if (ws.prayers) {
-    for (const p of state.prayers.filter(p => p.status === 'active' && (p.prayed ?? []).includes(date))) {
-      items.push({ kind: 'prayer', title: 'Prayer', text: p.title });
-    }
+  for (const id of picks.prayers) {
+    const p = state.prayers.find(x => x.id === id);
+    if (p) items.push({ kind: 'prayer', title: 'Prayer', text: p.title });
   }
   const [y, m, dd] = date.split('-').map(Number);
   return {

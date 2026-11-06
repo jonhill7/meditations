@@ -2,10 +2,15 @@ import { state, save, today, uid } from '../store.js';
 import { esc, sheet, shortDate, daysBetween, toast } from '../ui.js';
 import { formatRef, parseRef, parseTypedRef } from '../books.js';
 import { getPassage } from '../bible.js';
-import { widgetSettings, schedulePublish } from '../widget.js';
+import { widgetPicks, toggle, schedulePublish } from '../widget.js';
 
 export const tab = 'prayers';
 const DEFAULT_CATEGORIES = ['Family', 'Friends', 'Health', 'Work', 'Church', 'World', 'Personal', 'Thanksgiving'];
+
+export function pinPrayerHtml(p, picks = widgetPicks()) {
+  const on = picks.prayers.includes(p.id);
+  return `<button class="btn ghost small pin ${on ? 'on' : ''}" data-act="pin-prayer" data-id="${p.id}" aria-pressed="${on}">${on ? '✓ On widget' : 'Add to widget'}</button>`;
+}
 
 export function prayedToday(p) {
   return (p.prayed ?? []).includes(today());
@@ -117,7 +122,11 @@ export async function render(main) {
       case 'prayed':
         if (!prayedToday(p)) p.prayed = [...(p.prayed ?? []), today()];
         save();
-        if (widgetSettings().prayers) schedulePublish();
+        return render(main);
+      case 'pin-prayer':
+        toggle(widgetPicks().prayers, p.id);
+        save();
+        schedulePublish();
         return render(main);
       case 'reopen':
         p.status = 'active';
@@ -148,6 +157,7 @@ function item(p) {
         <p class="small muted">${last ? (ago === 0 ? 'Prayed today' : `Last prayed ${ago === 1 ? 'yesterday' : `${ago} days ago`}`) : 'Not prayed for yet'} · since ${esc(shortDate(p.created))}</p>
         <div class="row">
           ${prayedToday(p) ? '<span class="done-line">✓ Prayed today</span>' : `<button class="btn small" data-act="prayed" data-id="${p.id}">Prayed</button>`}
+          ${pinPrayerHtml(p)}
           <button class="btn ghost small" data-act="answered" data-id="${p.id}">Answered</button>
           <button class="btn ghost small" data-act="edit" data-id="${p.id}">Edit</button>
         </div>

@@ -233,7 +233,7 @@ textarea { resize: vertical; line-height: 1.45; }
 .chapter-title { margin: 4px 0 2px; }
 .scripture { font-family: var(--serif); font-size: var(--text-size); line-height: 1.75; }
 .scripture.sample { margin: 8px 0 0; }
-.verse { cursor: pointer; border-radius: 4px; -webkit-tap-highlight-color: transparent; }
+.verse { cursor: pointer; border-radius: 4px; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .verse:hover, .verse:focus-visible { background: var(--surface-2); outline: none; }
 .verse sup { font-family: var(--sans); font-size: .6em; color: var(--muted); margin-right: 3px; font-weight: 600; }
 .verse.has-note { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 4px; }
@@ -279,7 +279,7 @@ dialog.sheet::backdrop { background: rgb(0 0 0 / 45%); }
 .key-setup > * + * { margin-top: 8px; }
 
 .btn.pin.on { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border-color: var(--accent); color: var(--text); }
-.verse.pinned { outline: 1.5px dashed color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 1px; }
+.verse.pinned, .verse.pinned.memorized { background: color-mix(in srgb, var(--accent) 32%, transparent); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .widget-list { list-style: none; margin: 0 0 6px; padding: 0; }
 .widget-list li { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); font-family: var(--serif); }
 
@@ -362,3 +362,4 @@ dialog.sheet::backdrop { background: rgb(0 0 0 / 45%); }
 code.formula{display:block;margin:.4rem 0;padding:.4rem;word-break:break-all;font-size:.75rem;background:var(--surface-2);border-radius:6px}
 ol.steps{padding-left:1.2rem}
 ol.steps li{margin:.35rem 0}
+.prayer-acts{display:flex;flex-direction:column;align-items:flex-end;gap:.35rem}

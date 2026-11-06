@@ -4,9 +4,9 @@ import { bookName, formatRef } from '../books.js';
 import { getPassage } from '../bible.js';
 import { verseForDate } from '../votd.js';
 import { esc, longDate, daysBetween, toast } from '../ui.js';
-import { prayedToday, prayersDue, versesHtml, toggleVerse } from './prayers.js';
+import { prayedToday, prayersDue, versesHtml, toggleVerse, pinPrayerHtml } from './prayers.js';
 import { inMemory, addToMemory } from './memory.js';
-import { widgetPicks, widgetSettings, widgetUrl, mergeVerseRefs, toggle, schedulePublish } from '../widget.js';
+import { widgetPicks, widgetSettings, widgetUrl, mergeVerseRefs, toggle, schedulePublish, votdOnWidget } from '../widget.js';
 import { cardLabel } from '../memory.js';
 import { parseRef as parseVerseRef } from '../books.js';
 import { todaysReflections, toggleReflection, reflectionListHtml } from './reflect.js';
@@ -71,9 +71,8 @@ export async function render(main) {
         <a class="small" href="#/read/${verseRef.split(' ')[0]}/${verseRef.split(' ')[1].split(':')[0]}">${esc(formatRef(verseRef))}</a>
       </div>
       <blockquote class="votd" id="votd">…</blockquote>
-      ${doneToday ? '' : `<label class="check"><input type="checkbox" data-act="verse" ${d.verse ? 'checked' : ''}> Count this as today's reading</label>`}
+      <label class="check"><input type="checkbox" data-act="verse" ${d.verse ? 'checked' : ''}> ${doneToday ? 'I read this verse' : 'I read this verse (counts as today\'s reading)'}</label>
       <div class="row">
-        <button class="btn ghost small pin ${picks.votd ? 'on' : ''}" data-act="pin-votd" aria-pressed="${picks.votd}">${picks.votd ? '✓ On your widget' : 'Pin to widget'}</button>
         ${inMemory([verseRef])
           ? '<span class="small muted">✓ In your memory verses</span>'
           : '<button class="btn ghost small" data-act="memorize">Memorize this verse</button>'}
@@ -89,9 +88,12 @@ export async function render(main) {
         ? `<ul class="prayer-mini">${due.map(p => `
             <li>
               <div class="grow"><strong>${esc(p.title)}</strong>${p.category ? ` <span class="tag">${esc(p.category)}</span>` : ''}${versesHtml(p)}</div>
-              ${prayedToday(p)
-                ? '<span class="done-line">✓ Prayed</span>'
-                : `<button class="btn small" data-act="prayed" data-id="${p.id}">Prayed</button>`}
+              <div class="prayer-acts">
+                ${prayedToday(p)
+                  ? '<span class="done-line">✓ Prayed</span>'
+                  : `<button class="btn small" data-act="prayed" data-id="${p.id}">Prayed</button>`}
+                ${pinPrayerHtml(p, picks)}
+              </div>
             </li>`).join('')}</ul>`
         : `<p class="muted">No active prayers yet. <a href="#/prayers">Add one.</a></p>`}
     </section>
@@ -143,15 +145,18 @@ export async function render(main) {
       const p = state.prayers.find(p => p.id === btn.dataset.id);
       p.prayed = [...(p.prayed ?? []), date];
       save();
-      if (widgetSettings().prayers) schedulePublish();
-    } else if (act === 'pin-votd') {
-      picks.votd = !picks.votd;
+    } else if (act === 'pin-prayer') {
+      toggle(picks.prayers, btn.dataset.id);
       save();
       schedulePublish();
     } else if (act === 'unpin') {
       const [kind, value] = btn.dataset.pin.split('::');
-      if (kind === 'votd') picks.votd = false;
-      if (kind === 'memory') picks.memory = picks.memory.filter(id => id !== value);
+      if (kind === 'votd') picks.votdHidden = true;
+      if (kind === 'prayer') picks.prayers = picks.prayers.filter(id => id !== value);
+      if (kind === 'memory') {
+        picks.memory = picks.memory.filter(id => id !== value);
+        (picks.memoryHidden ??= []).push(value);
+      }
       if (kind === 'verse') {
         const r = parseVerseRef(value);
         picks.verses = picks.verses.filter(v => {
@@ -166,7 +171,11 @@ export async function render(main) {
   };
   main.onchange = e => {
     const act = e.target.dataset.act;
-    if (act === 'verse') d.verse = e.target.checked;
+    if (act === 'verse') {
+      d.verse = e.target.checked;
+      if (d.verse) delete picks.votdHidden;
+      schedulePublish();
+    }
     else if (act === 'reflected') d.reflected = e.target.checked;
     else return;
     save();
@@ -189,17 +198,19 @@ function widgetCardHtml(date, verseRef) {
   const ws = widgetSettings();
   const d = state.days[date] ?? {};
   const rows = [];
-  if (picks.votd) rows.push([formatRef(verseRef), 'votd::']);
+  if (votdOnWidget(date)) rows.push([formatRef(verseRef), 'votd::']);
   for (const ref of mergeVerseRefs(picks.verses)) rows.push([formatRef(ref), `verse::${ref}`]);
   for (const id of picks.memory) {
     const c = state.memory.cards[id];
     if (c) rows.push([`${cardLabel(c)} (memory)`, `memory::${id}`]);
   }
+  for (const id of picks.prayers) {
+    const p = state.prayers.find(x => x.id === id);
+    if (p) rows.push([`${p.title} (prayer)`, `prayer::${id}`]);
+  }
   const extras = [];
   const nReflections = Object.keys(d.doneReflections ?? {}).length;
   if (ws.reflections && nReflections) extras.push(`${nReflections} selected reflection${nReflections === 1 ? '' : 's'}`);
-  const nPrayers = state.prayers.filter(p => p.status === 'active' && (p.prayed ?? []).includes(date)).length;
-  if (ws.prayers && nPrayers) extras.push(`${nPrayers} prayer${nPrayers === 1 ? '' : 's'} you prayed`);
   if (!rows.length && !extras.length && !ws.lastPublished) return '';
   const time = ws.lastPublished && ws.lastPublished.slice(0, 10) === new Date().toISOString().slice(0, 10)
     ? new Date(ws.lastPublished).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : null;
@@ -215,7 +226,7 @@ function widgetCardHtml(date, verseRef) {
       ${rows.length ? `<ul class="widget-list">${rows.map(([label, pin]) => `
         <li><span>${esc(label)}</span><button class="icon-btn" data-act="unpin" data-pin="${esc(pin)}" aria-label="Take ${esc(label)} off the widget">✕</button></li>`).join('')}</ul>` : ''}
       ${extras.length ? `<p class="small">Also: ${extras.join(' and ')}.</p>` : ''}
-      ${!rows.length && !extras.length ? '<p class="muted small">Nothing pinned yet. Pin the verse above, or tap any verse while reading or in Memory.</p>' : ''}
+      ${!rows.length && !extras.length ? '<p class="muted small">Nothing here yet. Check the verse of the day as read, select reflections, practice a memory verse, or pin a verse while reading.</p>' : ''}
       ${status ? `<p class="small muted">${status}</p>` : ''}
     </section>`;
 }

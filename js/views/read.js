@@ -75,7 +75,7 @@ async function renderChapter(main, book, chapter, extra) {
     <h1 class="chapter-title">${esc(b.name)} ${chapter}</h1>
     <p class="muted small" id="translation"></p>
     <article class="scripture" id="text"><p class="muted">Loading…</p></article>
-    <p class="hint">Tap a verse for notes, cross references, and commentary.</p>
+    <p class="hint">Tap a verse to highlight it on today's widget. Press and hold a verse for notes, memory, cross references, and commentary.</p>
     <nav class="pager">
       ${prev ? `<a class="btn ghost" href="#/read/${prev[0]}/${prev[1]}">‹ ${esc(bookName(prev[0]))} ${prev[1]}</a>` : '<span></span>'}
       ${next ? `<a class="btn ghost" href="#/read/${next[0]}/${next[1]}">${esc(bookName(next[0]))} ${next[1]} ›</a>` : '<span></span>'}
@@ -103,7 +103,7 @@ async function renderChapter(main, book, chapter, extra) {
   main.querySelector('#text').innerHTML = verses.map((t, i) => {
     const ref = `${book} ${chapter}:${i + 1}`;
     if (!t) return '';
-    return `<span class="verse ${state.notes[ref] ? 'has-note' : ''} ${memorized.has(ref) ? 'memorized' : ''} ${pinned.has(ref) ? 'pinned' : ''}" data-v="${i + 1}" role="button" tabindex="0"><sup>${i + 1}</sup>${esc(t)} </span>`;
+    return `<span class="verse ${state.notes[ref] ? 'has-note' : ''} ${memorized.has(ref) ? 'memorized' : ''} ${pinned.has(ref) ? 'pinned' : ''}" data-v="${i + 1}" role="button" aria-pressed="${pinned.has(ref)}" tabindex="0"><sup>${i + 1}</sup>${esc(t)} </span>`;
   }).join('');
 
   if (focusVerse) {
@@ -115,14 +115,51 @@ async function renderChapter(main, book, chapter, extra) {
   }
 
   const open = el => study(book, chapter, Number(el.dataset.v), verses[el.dataset.v - 1], translation, el);
+  // Tap a verse to select it for today's widget; press and hold for notes and study.
+  const select = el => {
+    const on = toggle(widgetPicks().verses, `${book} ${chapter}:${el.dataset.v}`);
+    el.classList.toggle('pinned', on);
+    el.setAttribute('aria-pressed', on);
+    save();
+    schedulePublish();
+  };
+  let hold = null;
+  let held = false;
+  let start = null;
+  const cancelHold = () => { clearTimeout(hold); hold = null; };
+  main.onpointerdown = e => {
+    const v = e.target.closest('.verse');
+    if (!v) return;
+    held = false;
+    start = [e.clientX, e.clientY];
+    cancelHold();
+    hold = setTimeout(() => {
+      hold = null;
+      held = true;
+      navigator.vibrate?.(15);
+      open(v);
+    }, 450);
+  };
+  main.onpointermove = e => {
+    if (hold && start && Math.hypot(e.clientX - start[0], e.clientY - start[1]) > 10) cancelHold();
+  };
+  main.onpointerup = main.onpointercancel = cancelHold;
+  main.oncontextmenu = e => { if (e.target.closest('.verse')) e.preventDefault(); };
   main.onclick = e => {
     const v = e.target.closest('.verse');
-    if (v) return open(v);
+    if (v) {
+      if (held) { held = false; return; }
+      return select(v);
+    }
     if (e.target.closest('[data-act="chapter-commentary"]')) chapterCommentary(book, chapter);
   };
   main.onkeydown = e => {
     const v = e.target.closest('.verse');
-    if (v && (e.key === 'Enter' || e.key === ' ')) {
+    if (!v) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      select(v);
+    } else if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
       e.preventDefault();
       open(v);
     }
@@ -138,10 +175,6 @@ function study(book, chapter, verse, text, translation, verseEl) {
       <h3>My note</h3>
       <textarea class="note" rows="4" placeholder="What stands out to you?">${esc(note?.text)}</textarea>
       <p class="small muted saved-line">${note ? `Saved ${esc(new Date(note.updated).toLocaleDateString())}` : 'Saves as you type, on this phone only.'}</p>
-    </section>
-    <section>
-      <h3>Widget</h3>
-      <button class="btn ghost small pin ${widgetPicks().verses.includes(ref) ? 'on' : ''}" data-act="pin-verse">${widgetPicks().verses.includes(ref) ? '✓ On today\'s widget (tap to remove)' : 'Pin to today\'s widget'}</button>
     </section>
     <section>
       <h3>Memorize</h3>
@@ -193,14 +226,6 @@ function study(book, chapter, verse, text, translation, verseEl) {
     }
   });
 
-  d.querySelector('[data-act="pin-verse"]').onclick = e => {
-    const on = toggle(widgetPicks().verses, ref);
-    save();
-    schedulePublish();
-    verseEl.classList.toggle('pinned', on);
-    e.target.classList.toggle('on', on);
-    e.target.textContent = on ? '✓ On today\'s widget (tap to remove)' : 'Pin to today\'s widget';
-  };
 
   d.querySelector('[data-act="memorize"]')?.addEventListener('click', e => {
     addToMemory([ref]);
