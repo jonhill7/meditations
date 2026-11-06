@@ -43,23 +43,21 @@ export function feedText(items) {
   return items.map(i => (i.kind === 'reflection' || i.kind === 'prayer' ? `• ${i.text}` : `${i.title}\n${i.text}`)).join('\n\n');
 }
 
-// The same text with KWGT's BBCode-style formatting: a small date line,
-// bold references with the translation in grey, and grouped reflections
-// and prayers under small headings.
+// The same text with KWGT's BBCode-style formatting: a small date line, then
+// Scripture, Prayer, reflections (no heading) and Memory, with bold references.
 const ACCENT = '#D9B48A';
 const GREY = '#A8A29A';
 const plain = t => String(t).replace(/\[/g, '(').replace(/\]/g, ')');
 export function feedRich(items, title) {
-  const out = [`[s=0.75][c=${ACCENT}]${plain(title).toUpperCase()}[/c][/s]`];
+  const head = label => `[s=0.75][c=${ACCENT}]${label.toUpperCase()}[/c][/s]`;
+  const verse = i => `[b]${plain(i.title)}[/b]${i.tr ? `  [s=0.7][c=${GREY}]${plain(i.tr)}[/c][/s]` : ''}\n${plain(i.text)}`;
+  const of = kind => items.filter(i => i.kind === kind);
+  const out = [`[s=0.75][c=${GREY}]${plain(title).toUpperCase()}[/c][/s]`];
   if (!items.length) out.push('[i]Nothing chosen yet today.[/i]');
-  for (const i of items.filter(i => i.kind === 'verse' || i.kind === 'memory')) {
-    const tag = [i.kind === 'memory' ? 'memory' : '', i.tr].filter(Boolean).join(' · ');
-    out.push(`[b]${plain(i.title)}[/b]${tag ? `  [s=0.7][c=${GREY}]${plain(tag)}[/c][/s]` : ''}\n${plain(i.text)}`);
-  }
-  for (const [kind, label] of [['reflection', 'Reflect'], ['prayer', 'Pray']]) {
-    const list = items.filter(i => i.kind === kind);
-    if (list.length) out.push(`[s=0.75][c=${ACCENT}]${label.toUpperCase()}[/c][/s]\n${list.map(i => `• ${plain(i.text)}`).join('\n')}`);
-  }
+  if (of('verse').length) out.push(`${head('Scripture')}\n${of('verse').map(verse).join('\n\n')}`);
+  if (of('prayer').length) out.push(`${head('Prayer')}\n${of('prayer').map(i => `• ${plain(i.text)}`).join('\n')}`);
+  if (of('reflection').length) out.push(of('reflection').map(i => `• ${plain(i.text)}`).join('\n'));
+  if (of('memory').length) out.push(`${head('Memory')}\n${of('memory').map(verse).join('\n\n')}`);
   return out.join('\n\n');
 }
 
@@ -136,6 +134,8 @@ export async function buildFeed(date = today()) {
     const p = state.prayers.find(x => x.id === id);
     if (p) items.push({ kind: 'prayer', title: 'Prayer', text: p.title });
   }
+  const rank = { verse: 0, prayer: 1, reflection: 2, memory: 3 };
+  items.sort((a, b) => rank[a.kind] - rank[b.kind]);
   const [y, m, dd] = date.split('-').map(Number);
   const title = new Date(y, m - 1, dd).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   return {
