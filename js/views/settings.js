@@ -72,7 +72,7 @@ export async function render(main) {
       ${wurl ? `
         <label class="check"><input type="checkbox" name="widgetReflections" ${ws.reflections ? 'checked' : ''}> Also show the reflections I select each day</label>
         <label class="check"><input type="checkbox" name="widgetPrayers" ${ws.prayers ? 'checked' : ''}> Also show the titles of prayers I prayed today</label>
-        <p class="small muted">To reach the widget, today's picks are copied to the app's server under a private link and deleted after 3 days. Scripture is always fine to send. Reflections and prayers are your own words, so they're only sent if you turn them on above.</p>
+        <p class="small muted">To reach the widget, today's picks are copied to the app's server under a private link and deleted after 3 days. Scripture is always fine to send. Reflections you select are included unless you turn them off. Prayer titles are only sent if you turn them on.</p>
         <label>Your private widget link<input readonly value="${esc(wurl)}" class="widget-link"></label>
         <div class="row">
           <button class="btn ghost small" data-act="copy-widget">Copy link</button>

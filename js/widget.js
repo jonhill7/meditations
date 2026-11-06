@@ -12,7 +12,10 @@ import { verseForDate } from './votd.js';
 import { SHARED_BIBLE_SERVER } from './config.js';
 
 export function widgetSettings() {
-  return (state.settings.widget ??= { token: '', reflections: false, prayers: false, lastPublished: null, lastError: null });
+  const ws = (state.settings.widget ??= { token: '', reflections: true, prayers: false, lastPublished: null, lastError: null });
+  // Reflections became on by default after the first version; turn them on once.
+  if (!ws.v2) Object.assign(ws, { reflections: true, v2: true });
+  return ws;
 }
 
 export function widgetPicks(date = today()) {
